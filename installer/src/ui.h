@@ -22,7 +22,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifdef TARGET_WWITCH
+#define SCREEN1 ((uint16_t __far*) MK_FP(0x0000, 0x1800))
+#else
 #define SCREEN1 ((uint16_t*) 0x1800)
+#endif
 
 #define COLOR_BLACK 0
 #define COLOR_GRAY 1
@@ -45,6 +49,6 @@ typedef struct {
     uint16_t flags;
 } menu_entry_t;
 
-uint8_t ui_menu_run(menu_entry_t *entries, uint8_t entry_count, uint8_t y);
+uint8_t ui_menu_run(menu_entry_t __far* entries, uint8_t entry_count, uint8_t y);
 
 #endif /* __UI_H__ */

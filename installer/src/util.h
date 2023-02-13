@@ -17,6 +17,12 @@
 
 #pragma once
 
+#ifdef TARGET_WWITCH
+#define IN_ROM
+#else
+#define IN_ROM __far
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 

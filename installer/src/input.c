@@ -15,9 +15,23 @@
  * with BootFriend. If not, see <https://www.gnu.org/licenses/>. 
  */
 
-#include <ws.h>
 #include "input.h"
 #include "util.h"
+
+#ifdef TARGET_WWITCH
+#include <sys/bios.h>
+
+uint16_t input_pressed;
+
+void input_update(void) {
+	input_pressed = key_hit_check();
+}
+
+void input_wait_clear(void) {
+	while (key_press_check() != 0) sys_wait(1);
+}
+#else
+#include <ws.h>
 
 // it's an uint16_t but we only want the low byte
 extern volatile uint8_t vbl_ticks;
@@ -96,3 +110,4 @@ void input_wait_clear(void) {
 	} while (input_keys != 0);
 	input_update();
 }
+#endif

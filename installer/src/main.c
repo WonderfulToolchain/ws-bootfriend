@@ -28,6 +28,7 @@
 #include "ws/display.h"
 #include "ws/eeprom.h"
 
+#ifndef TARGET_WWITCH
 volatile uint16_t vbl_ticks;
 
 __attribute__((interrupt))
@@ -36,15 +37,17 @@ void vblank_int_handler(void) {
 	vblank_input_update();
 	ws_hwint_ack(HWINT_VBLANK);
 }
+#endif
+
 // Must be 24 chars
 //                                     1234567890123456789012345678
-static const char __far bfi_title[] = "bootfriend-inst devel. build";
-static const char __far bfi_eeprom_locked[] = "EEP locked";
-static const char __far bfi_eeprom_unlocked[] = "EEP unlocked";
-static const char __far bfi_no_splash[] = "no splash";
-static const char __far bfi_invalid_splash[] = "invalid splash";
-static const char __far bfi_no_bf[] = "non-BF splash";
-static const char __far bfi_bf_found[] = "BF v.%02X";
+static const char IN_ROM bfi_title[] = "bootfriend-inst devel. build";
+static const char IN_ROM bfi_eeprom_locked[] = "EEP locked";
+static const char IN_ROM bfi_eeprom_unlocked[] = "EEP unlocked";
+static const char IN_ROM bfi_no_splash[] = "no splash";
+static const char IN_ROM bfi_invalid_splash[] = "invalid splash";
+static const char IN_ROM bfi_no_bf[] = "non-BF splash";
+static const char IN_ROM bfi_bf_found[] = "BF v.%02X";
 
 ws_boot_splash_header_t boot_header_data;
 static bool boot_header_update_required;
@@ -100,6 +103,7 @@ static void toggle_boot_splash(void) {
 	statusbar_update();
 }
 
+#ifndef TARGET_WWITCH
 extern const char __far ws_ieep_internal_owner_to_ascii_map[];
 extern void bootfriend_vblank_handler(void) __attribute__((interrupt));
 
@@ -152,12 +156,13 @@ static void test_bootfriend(void) {
 	// restore UI
 	ui_init();
 }
+#endif
 
-static const char __far msg_are_you_sure_install[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nWould you like to install BootFriend?";
-static const char __far msg_installing_eeprom_data[] = "Installing IEEPROM data...";
-static const char __far msg_verifying_eeprom_data[] =  "Verifying IEEPROM data....";
-static const char __far msg_verify_error[] =  "Verify error @ %03X";
-static const char __far msg_do_not_turn_off[] = "Do not turn off the console!";
+static const char IN_ROM msg_are_you_sure_install[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nWould you like to install BootFriend?";
+static const char IN_ROM msg_installing_eeprom_data[] = "Installing IEEPROM data...";
+static const char IN_ROM msg_verifying_eeprom_data[] =  "Verifying IEEPROM data....";
+static const char IN_ROM msg_verify_error[] =  "Verify error @ %03X";
+static const char IN_ROM msg_do_not_turn_off[] = "Do not turn off the console!";
 
 static void install_bootfriend(void) {
 	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
@@ -194,7 +199,7 @@ static void install_bootfriend(void) {
 		}
 		
 		if (step_counter < 26 && (++step_counter_min) == steps_per_progress) {
-			ws_screen_put(SCREEN1, SCR_ENTRY_PALETTE(COLOR_SELECTED), 1 + (step_counter++), 15);
+			SCREEN1[1 + (step_counter++) + (15 << 5)] = SCR_ENTRY_PALETTE(COLOR_SELECTED);
 			step_counter_min = 0;
 		}
 	}
@@ -228,7 +233,7 @@ static void install_bootfriend(void) {
 		}
 		
 		if (step_counter < 26 && (++step_counter_min) == steps_per_progress) {
-			ws_screen_put(SCREEN1, SCR_ENTRY_PALETTE(COLOR_SELECTED), 1 + (step_counter++), 15);
+			SCREEN1[1 + (step_counter++) + (15 << 5)] = SCR_ENTRY_PALETTE(COLOR_SELECTED);
 			step_counter_min = 0;
 		}
 	}
@@ -245,8 +250,8 @@ EndInstall:
 	statusbar_update();
 }
 
-static const char __far msg_are_you_sure_recovery[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nThis option tries to restore factory TFT configuration for SwanCrystal consoles.\n\nWould you like to continue?";
-static const uint8_t __far swancrystal_factory_tft_data[] = {
+static const char IN_ROM msg_are_you_sure_recovery[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nThis option tries to restore factory TFT configuration for SwanCrystal consoles.\n\nWould you like to continue?";
+static const uint8_t IN_ROM swancrystal_factory_tft_data[] = {
 	0xD0, 0x77, 0xF7, 0x06, 0xE2, 0x0A, 0xEA, 0xEE
 };
 
@@ -265,9 +270,9 @@ static void recovery_swancrystal(void) {
 	statusbar_update();
 }
 
-static const char __far msg_are_you_sure[] = "Are you sure?";
-static const char __far msg_yes[] = "Yes";
-static const char __far msg_no[] = "No";
+static const char IN_ROM msg_are_you_sure[] = "Are you sure?";
+static const char IN_ROM msg_yes[] = "Yes";
+static const char IN_ROM msg_no[] = "No";
 
 bool menu_confirm(const char __far *text, uint8_t text_height, bool centered) {
 	menu_entry_t entries[2];
@@ -285,11 +290,11 @@ bool menu_confirm(const char __far *text, uint8_t text_height, bool centered) {
 	return result == 1;
 }
 
-static const char __far msg_test_bootfriend[] = "Test BootFriend";
-static const char __far msg_install_bootfriend[] = "Install BootFriend";
-static const char __far msg_disable_splash[] = "Disable boot splash";
-static const char __far msg_enable_splash[] = "Enable boot splash";
-static const char __far msg_recover_swancrystal[] = "SwanCrystal TFT recovery";
+static const char IN_ROM msg_test_bootfriend[] = "Test BootFriend";
+static const char IN_ROM msg_install_bootfriend[] = "Install BootFriend";
+static const char IN_ROM msg_disable_splash[] = "Disable boot splash";
+static const char IN_ROM msg_enable_splash[] = "Enable boot splash";
+static const char IN_ROM msg_recover_swancrystal[] = "SwanCrystal TFT recovery";
 
 uint8_t menu_show_main(void) {
 	boot_header_refresh();
@@ -298,7 +303,11 @@ uint8_t menu_show_main(void) {
 	uint8_t entry_count = 0;
 
 	entries[entry_count].text = msg_test_bootfriend;
+#ifdef TARGET_WWITCH
+	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
+#else
 	entries[entry_count++].flags = 0;
+#endif
 	entries[entry_count].text = msg_install_bootfriend;
 	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0; 
 	entries[entry_count].text = splash_active ? msg_disable_splash : msg_enable_splash;
@@ -312,9 +321,11 @@ uint8_t menu_show_main(void) {
 void menu_main(void) {
 	input_wait_clear();
 	switch (menu_show_main()) {
+#ifndef TARGET_WWITCH
 	case 0: // Test BootFriend	
 		test_bootfriend();
 		break;
+#endif
 	case 1: // Install BootFriend
 		if (menu_confirm(msg_are_you_sure_install, 6, false)) install_bootfriend();
 		break;
@@ -328,15 +339,19 @@ void menu_main(void) {
 }
 
 int main(void) {
+#ifndef TARGET_WWITCH
 	cpu_irq_disable();
+#endif
 
 	boot_header_mark_changed();
 	ui_init();
 	statusbar_update();
 
+#ifndef TARGET_WWITCH
 	ws_hwint_set_handler(HWINT_IDX_VBLANK, vblank_int_handler);
 	ws_hwint_enable(HWINT_VBLANK);
 	cpu_irq_enable();
+#endif
 
 	while(1) {
 		menu_main();

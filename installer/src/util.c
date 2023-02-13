@@ -16,15 +16,22 @@
  */
 
 #include <ws.h>
+#ifdef TARGET_WWITCH
+#include <sys/bios.h>
+#endif
 #include "util.h"
 
 // it's an uint16_t but we only want the low byte
 extern volatile uint8_t vbl_ticks;
 
 void wait_for_vblank(void) {
+#ifndef TARGET_WWITCH
         uint8_t vbl_ticks_last = vbl_ticks;
 
         while (vbl_ticks == vbl_ticks_last) {
                 cpu_halt();
         }
+#else
+        sys_wait(1);
+#endif
 }

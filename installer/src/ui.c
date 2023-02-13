@@ -25,7 +25,7 @@
 #include "util.h"
 #include "ws/display.h"
 
-const char __far msg_wsc_only[] = "The BootFriend installer is compatible only with Wonder-Swan Color and SwanCrystal consoles! Shutting down.";
+const char IN_ROM msg_wsc_only[] = "The BootFriend installer is compatible only with Wonder-Swan Color and SwanCrystal consoles! Shutting down.";
 
 static bool ui_is_space(char c) {
     return c == 0 || c == '\n' || c == 32;
@@ -57,7 +57,7 @@ NewLine:
             if (chars > 28) chars = 28;
             continue;
         }
-        uint16_t *dest = SCREEN1 + (((uint16_t) y) << 5) + x;
+        uint16_t __far* dest = SCREEN1 + (((uint16_t) y) << 5) + x;
         for (uint8_t i = 0; i < chars; i++) {
             *(dest++) = prefix | *(ptr++);
         }
@@ -76,8 +76,8 @@ void ui_printf(uint8_t x, uint8_t y, uint8_t color, const char __far* format, ..
 }
 
 void ui_init(void) {
-    const uint8_t __far *src = _font_default_bin;
-    uint16_t *dst = (uint16_t*) 0x2000;
+    const uint8_t __far* src = _font_default_bin;
+    uint16_t __far* dst = (uint16_t __far*) MK_FP(0x0000, 0x2000);
     for (int i = 0; i < _font_default_bin_size; i++) {
         *(dst++) = *(src++);
     }
@@ -109,14 +109,16 @@ void ui_init(void) {
     MEM_COLOR_PALETTE(COLOR_TITLE)[1] = 0x0FD4;
 }
 
-static void ui_menu_draw_entry(menu_entry_t *entry, uint8_t y, bool selected) {
+static void ui_menu_draw_entry(menu_entry_t __far* entry, uint8_t y, bool selected) {
     uint8_t color = selected ? COLOR_SELECTED : (entry->flags & MENU_ENTRY_DISABLED ? COLOR_GRAY : COLOR_BLACK);
     uint16_t prefix = SCR_ENTRY_PALETTE(color);
-    ws_screen_fill(SCREEN1, SCR_ENTRY_PALETTE(color), 0, y, 28, 1);
+    for (uint8_t i = 0; i < 28; i++) {
+        SCREEN1[(y << 5) + i] = SCR_ENTRY_PALETTE(color);
+    }
     ui_puts((28 - strlen(entry->text)) >> 1, y, color, entry->text);
 }
 
-uint8_t ui_menu_run(menu_entry_t *entries, uint8_t entry_count, uint8_t y) {
+uint8_t ui_menu_run(menu_entry_t __far* entries, uint8_t entry_count, uint8_t y) {
     uint8_t curr_entry = 0;
     while (curr_entry < entry_count && (entries[curr_entry].flags & MENU_ENTRY_DISABLED)) curr_entry++;
     if (curr_entry >= entry_count) return 0xFF;
