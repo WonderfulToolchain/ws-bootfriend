@@ -68,8 +68,8 @@ bootFriendVersion:
 	dw vblankHandler ; VBlank handler - segment
 	dw 0x0600 ; VBlank handler - offset
 	db 224/2 ; Console name X (horizontal)
-	db 144/2 + 40 ; Console name Y (horizontal)
-	db 144/2 ; Console name X (vertical)
+	db 144/2 + 40 - 4 ; Console name Y (horizontal)
+	db 144/2 - 4 ; Console name X (vertical)
 	db 224 - (224/2 + 40) ; Console name Y (vertical)
 bootFriendHeader:
 	db 'b', 'F' ; Padding (BootFriend header)
@@ -125,6 +125,11 @@ bootfriend_check:
 	; START OF KEY CHECKING CODE
 	test al, 0x01 ; PCv2 bootstrap? (Y1)
 	jz vbl_noPCv2Strap
+
+	; Switch to Mono mode
+	in al, 0x60
+	and al, 0x1F
+	out 0x60, al
 
 	; Jump to PCv2 bootstrap
 	jmp 0x4000:0x0010

@@ -36,8 +36,9 @@ void vblank_int_handler(void) {
 	vblank_input_update();
 	ws_hwint_ack(HWINT_VBLANK);
 }
-
-static const char __far bfi_title[] = "BootFriend Installer v. %02X";
+// Must be 24 chars
+//                                     1234567890123456789012345678
+static const char __far bfi_title[] = "bootfriend-inst devel. build";
 static const char __far bfi_eeprom_locked[] = "EEP locked";
 static const char __far bfi_eeprom_unlocked[] = "EEP unlocked";
 static const char __far bfi_no_splash[] = "no splash";
@@ -64,10 +65,9 @@ static void statusbar_update(void) {
 	boot_header_refresh();
 	char buf[29];
 
-	SCREEN1[0] = SCR_ENTRY_PALETTE(COLOR_TITLE);
-	SCREEN1[27] = SCR_ENTRY_PALETTE(COLOR_TITLE);
-	ui_printf(1, 0, COLOR_TITLE, bfi_title, 0);
-
+	for (uint8_t i = 0; i < 28; i++) {
+		SCREEN1[i] = SCR_ENTRY_PALETTE(COLOR_TITLE) | bfi_title[i];
+	}
 	ui_clear_lines(1, 1);
 
 	const char __far *eeprom_status = ws_ieep_protect_check() ? bfi_eeprom_locked : bfi_eeprom_unlocked;

@@ -9,7 +9,7 @@ MKDIRS := $(OBJDIR)
 LIBS := -lws -lc -lgcc
 CFLAGS += -Os -fno-jump-tables -ffunction-sections
 LDFLAGS += -Wl,--gc-sections -Wl,--print-gc-sections
-SLFLAGS := --heap-length 0x1800 --color --rom-size 2 --ram-type SRAM_8KB --unlock-ieep
+SLFLAGS := --heap-length 0x1800 --color --rom-size 2 --load-offset 0xE0000 --ram-type SRAM_8KB --unlock-ieep
 SLFLAGS += --disable-custom-bootsplash
 TARGET := bootfriend_inst.wsc
 
