@@ -47,7 +47,7 @@ bits 16
 cpu 186
 org 0x0000
 
-	db 0, 0, 0 ; Padding
+	db 0xAB, 0xDC, 0xEF Padding
 	db 0 ; Console flags
 	db 0 ; Console name color
 bootFriendVersion:
@@ -58,9 +58,15 @@ bootFriendVersion:
 	db 0 ; Sprite count
 	db 0x81 ; Palette flags
 	db 64 ; Tile count
+%ifdef ROM
 	dw paletteData
 	dw tilesetData
 	dw tilemapData
+%else
+	dw ffffPointer
+	dw ffffPointer
+	dw ffffPointer
+%endif
 	dw 0x800 + (4 * 64) + (10 * 2) ; Horizontal tilemap offset
 	dw 0x800 + (5 * 64) + (9 * 2) ; Vertical tilemap offset
 	db 8 ; Tilemap width
@@ -448,6 +454,8 @@ loader_putc_done:
 	pop bx
 	ret
 
+%ifdef ROM
+
 paletteData:
 	dw 0x0FFF
 	dw 0x0AAA
@@ -459,3 +467,8 @@ tilesetData:
 
 tilemapData:
 	times 64 dw 0
+
+times (2048 - 128)-($-$$) db 0x00 ; Padding
+
+%else
+%endif

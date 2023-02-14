@@ -158,7 +158,7 @@ static void test_bootfriend(void) {
 }
 #endif
 
-static const char IN_ROM msg_are_you_sure_install[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nWould you like to install BootFriend?";
+static const char IN_ROM msg_are_you_sure_install[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nWould you like to install?";
 static const char IN_ROM msg_installing_eeprom_data[] = "Installing IEEPROM data...";
 static const char IN_ROM msg_verifying_eeprom_data[] =  "Verifying IEEPROM data....";
 static const char IN_ROM msg_verify_error[] =  "Verify error @ %03X";
@@ -292,13 +292,22 @@ bool menu_confirm(const char __far *text, uint8_t text_height, bool centered) {
 
 static const char IN_ROM msg_test_bootfriend[] = "Test BootFriend";
 static const char IN_ROM msg_install_bootfriend[] = "Install BootFriend";
-static const char IN_ROM msg_disable_splash[] = "Disable boot splash";
-static const char IN_ROM msg_enable_splash[] = "Enable boot splash";
+static const char IN_ROM msg_install_splash[] = "Install splash";
+static const char IN_ROM msg_disable_splash[] = "Disable custom splash";
+static const char IN_ROM msg_enable_splash[] = "Enable custom splash";
+static const char IN_ROM msg_disable_bf[] = "Disable BootFriend";
+static const char IN_ROM msg_enable_bf[] = "Enable BootFriend";
 static const char IN_ROM msg_recover_swancrystal[] = "SwanCrystal TFT recovery";
 
 uint8_t menu_show_main(void) {
 	boot_header_refresh();
 	bool splash_active = boot_header_data.options1 & IEEP_C_OPTIONS1_CUSTOM_SPLASH;
+	bool splash_bf = boot_header_data.pad5 == 'b' && boot_header_data.pad6 == 'F';
+
+	ws_boot_splash_header_t __far* provided_header = (ws_boot_splash_header_t __far*) _bootfriend_bin;
+	bool provided_splash_bf = provided_header->pad5 == 'b' && provided_header->pad6 == 'F';
+
+
 	menu_entry_t entries[4];
 	uint8_t entry_count = 0;
 
@@ -306,11 +315,11 @@ uint8_t menu_show_main(void) {
 #ifdef TARGET_WWITCH
 	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
 #else
-	entries[entry_count++].flags = 0;
+	entries[entry_count++].flags = provided_splash_bf ? 0 : MENU_ENTRY_DISABLED;
 #endif
-	entries[entry_count].text = msg_install_bootfriend;
+	entries[entry_count].text = provided_splash_bf ? msg_install_bootfriend : msg_install_splash;
 	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0; 
-	entries[entry_count].text = splash_active ? msg_disable_splash : msg_enable_splash;
+	entries[entry_count].text = splash_active ? (splash_bf ? msg_disable_bf : msg_disable_splash) : (splash_bf ? msg_enable_bf : msg_enable_splash);
 	entries[entry_count++].flags = (ws_ieep_protect_check() || (!splash_active && !boot_header_splash_valid)) ? MENU_ENTRY_DISABLED : 0;
 	entries[entry_count].text = msg_recover_swancrystal;
 	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0; 
