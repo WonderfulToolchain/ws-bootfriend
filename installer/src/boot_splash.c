@@ -32,7 +32,7 @@
  * @return true 
  * @return false 
  */
-bool ws_boot_splash_is_header_valid(ws_boot_splash_header_t *header) {
+bool ws_boot_splash_is_header_valid(ws_boot_splash_header_t __far* header) {
     // Heuristics
     if (header->size >= 2) return false;
     if (header->start_frame > header->end_frame) return false;

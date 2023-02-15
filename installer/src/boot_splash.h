@@ -72,6 +72,6 @@ typedef struct {
 #define BOOT_SPLASH_PALETTE_1BPP 0x00
 #define BOOT_SPLASH_PALETTE_2BPP 0x80
 
-bool ws_boot_splash_is_header_valid(ws_boot_splash_header_t *header);
+bool ws_boot_splash_is_header_valid(ws_boot_splash_header_t __far* header);
 
 #endif /* __BOOT_SPLASH_H__ */

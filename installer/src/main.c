@@ -161,6 +161,7 @@ static void test_bootfriend(void) {
 static const char IN_ROM msg_are_you_sure_install[] = "THIS SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND.\n\nWould you like to install?";
 static const char IN_ROM msg_installing_eeprom_data[] = "Installing IEEPROM data...";
 static const char IN_ROM msg_verifying_eeprom_data[] =  "Verifying IEEPROM data....";
+static const char IN_ROM msg_backing_up_eeprom[] = "Backing up IEEPROM...";
 static const char IN_ROM msg_verify_error[] =  "Verify error @ %03X";
 static const char IN_ROM msg_do_not_turn_off[] = "Do not turn off the console!";
 
@@ -180,15 +181,15 @@ static void install_bootfriend(void) {
 	}
 
 	// Write BootFriend data; skip sensitive/user-configurable areas
-	uint16_t word_0x84 = ws_eeprom_read_word(ieep_handle, 0x84);
+	/* uint16_t word_0x84 = ws_eeprom_read_word(ieep_handle, 0x84);
 	word_0x84 = (word_0x84 & 0xFF) | (_bootfriend_bin[5] << 8);
-	ws_eeprom_write_word(ieep_handle, 0x84, word_0x84);
+	ws_eeprom_write_word(ieep_handle, 0x84, word_0x84); */
 
-	uint16_t steps_per_progress = (_bootfriend_bin_size - 6) / (26 * 2);
+	uint16_t steps_per_progress = (_bootfriend_bin_size - /* 6 */ 4) / (26 * 2);
 	uint8_t step_counter = 0;
 	uint16_t step_counter_min = 0;
 
-	for (uint16_t i = 0x06; i < _bootfriend_bin_size; i += 2) {
+	for (uint16_t i = /* 0x06 */ 0x04; i < _bootfriend_bin_size; i += 2) {
 		uint16_t w = _bootfriend_bin[i] | (_bootfriend_bin[i + 1] << 8);
 		uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 		// skip SwanCrystal data block
@@ -274,7 +275,7 @@ static const char IN_ROM msg_are_you_sure[] = "Are you sure?";
 static const char IN_ROM msg_yes[] = "Yes";
 static const char IN_ROM msg_no[] = "No";
 
-bool menu_confirm(const char __far *text, uint8_t text_height, bool centered) {
+bool menu_confirm(const char __far *text, uint8_t text_height, bool centered, bool yes_default) {
 	menu_entry_t entries[2];
 	uint8_t height = text_height + 3;
 	uint8_t y_text = 3 + ((14 - height) >> 1);
@@ -282,12 +283,12 @@ bool menu_confirm(const char __far *text, uint8_t text_height, bool centered) {
 
 	ui_puts(centered ? (28 - strlen(text)) >> 1 : 0, y_text, 0, text);
 
-	entries[0].text = msg_no;  entries[0].flags = 0;
-	entries[1].text = msg_yes; entries[1].flags = 0;
+	entries[0].text = yes_default ? msg_yes : msg_no;  entries[0].flags = 0;
+	entries[1].text = yes_default ? msg_no : msg_yes; entries[1].flags = 0;
 	uint8_t result = ui_menu_run(entries, 2, y_menu);
 
 	ui_clear_lines(y_text, y_text + text_height - 1);
-	return result == 1;
+	return yes_default ? (result == 0) : (result == 1);
 }
 
 static const char IN_ROM msg_test_bootfriend[] = "Test BootFriend";
@@ -327,22 +328,44 @@ uint8_t menu_show_main(void) {
 	ui_menu_run(entries, entry_count, 3 + ((14 - entry_count) >> 1));
 }
 
+static const char IN_ROM msg_backup_check[] = "Would you like to backup your internal EEPROM to cartridge save RAM first?";
+
+void do_backup_check(void) {
+	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
+	ws_boot_splash_header_t __far* provided_header = (ws_boot_splash_header_t __far*) MK_FP(0x1000, 0x0080);
+
+	input_wait_clear();
+
+	if (!ws_boot_splash_is_header_valid(provided_header) && menu_confirm(msg_backup_check, 6, false, true)) {
+		ui_clear_lines(3, 17);
+		ui_puts(1, 3, COLOR_BLACK, msg_backing_up_eeprom);
+		uint16_t __far *sram_ptr = (uint16_t __far*) MK_FP(0x1000, 0x0000);
+		for (uint16_t i = 0; i < 2048; i += 2) {
+			*(sram_ptr++) = ws_eeprom_read_word(ieep_handle, i);
+		}
+		ui_clear_lines(3, 3);
+	}
+}
+
 void menu_main(void) {
 	input_wait_clear();
 	switch (menu_show_main()) {
 #ifndef TARGET_WWITCH
-	case 0: // Test BootFriend	
+	case 0: // Test BootFriend
 		test_bootfriend();
 		break;
 #endif
 	case 1: // Install BootFriend
-		if (menu_confirm(msg_are_you_sure_install, 6, false)) install_bootfriend();
+		if (menu_confirm(msg_are_you_sure_install, 6, false, false)) {
+			do_backup_check();
+			install_bootfriend();
+		}
 		break;
 	case 2: // Disable/Enable boot splash
-		if (menu_confirm(msg_are_you_sure, 1, true)) toggle_boot_splash();
+		if (menu_confirm(msg_are_you_sure, 1, true, false)) toggle_boot_splash();
 		break;
 	case 3: // SwanCrystal recovery
-		if (menu_confirm(msg_are_you_sure_recovery, 9, false)) recovery_swancrystal();
+		if (menu_confirm(msg_are_you_sure_recovery, 9, false, false)) recovery_swancrystal();
 		break;
 	}
 }
