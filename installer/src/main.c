@@ -40,7 +40,7 @@ void vblank_int_handler(void) {
 #endif
 
 // Must be 24 chars
-//                                     1234567890123456789012345678
+//                                      1234567890123456789012345678
 static const char IN_ROM bfi_title[] = "bootfriend-inst devel. build";
 static const char IN_ROM bfi_eeprom_locked[] = "EEP locked";
 static const char IN_ROM bfi_eeprom_unlocked[] = "EEP unlocked";

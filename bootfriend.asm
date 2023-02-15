@@ -47,9 +47,9 @@ bits 16
 cpu 186
 org 0x0000
 
-	db 0xAB, 0xDC, 0xEF Padding
-	db 0 ; Console flags
-	db 0 ; Console name color
+	db 'b', 'F', 't' Padding
+	db 'M' ; Console flags
+	db 'p' ; Console name color
 bootFriendVersion:
 	db 0 ; Padding (BootFriend version)
 	db 1 ; Size
