@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="pure-min.css">
+	<title>BootFriend for WS</title>
+	<style type="text/css">
+		html, body { background-color: #fffefd; }
+		a, a:visited { color: #27c; text-decoration: none; }
+		a:hover { color: #6ae; text-decoration: none; }
+		li { margin-bottom: 0.25em; }
+		li > ul { margin-top: 0.625em; padding-bottom: 0.125em; }
+		h1, h2 { text-align: center; }
+		label { margin-bottom: 0.25em; display: inline-block; }
+		.tab-hidden { display: none; }
+		hr { border: 0px solid #ccc; border-top-width: 1px; margin: 1em 0; }
+	</style>
+	<link rel="stylesheet" href="coloris.min.css"/>
+	<script type="text/javascript" src="coloris.min.js"></script>
+</head>
+<body>
+<img id="bf-font-default" crossorigin="anonymous" src="font_default.png" style="display: none;"/>
+<div class="pure-g" style="max-width: 800px; margin: 0 auto;">
+	<div class="pure-u-1-1">
+		<h1>BootFriend for WS</h1>
+		<p style="padding-bottom: 0.6em; text-align: center;"><i>So you're a Friend who's good at booting homebrew? <a href="https://twitter.com/sasakure__UK/status/846922987991281665">Sugoi~!</a></i></p>
+		<p><b>BootFriend</b> is a custom &quot;firmware&quot; solution compatible with the WonderSwan Color and SwanCrystal handheld consoles. It provides the following features:</p>
+		<ul>
+			<li>Custom startup splash screen - faster boot times, custom logo,</li>
+			<li>Launch cartridges in Pocket Challenge V2/&quot;pin-strapped&quot; mode - hold <b>Y1</b> on boot,</li>
+			<li>Load .bfb programs to RAM via serial port - akin to the GBA's &quot;Multiboot&quot; functionality:
+			<ul>
+				<li>Compile your own homebrew and run it (<a href="https://github.com/WonderfulToolchain/ws-bootfriend/blob/main/README.md">format specification</a>),</li>
+				<li>Backup games and saves, as well as dump the IPL (boot ROM) with <a href="#soft-ws-backup-tool">WS Backup Tool</a>,</li>
+				<li>Verify hardware functionality as an emulator/homebrew developer with <a href="#soft-wsmonitor">WSMonitor</a>.</li>
+			</ul>
+			</li>
+			<li>Verify BootFriend installation status and version - hold <b>Y3</b> on boot.</li>
+		</ul>
+		</p>
+		<p>In addition, the installation software can be used to fix certain console faults caused by internal EEPROM corruption:
+		<ul>
+			<li>Freezes/hangs on startup caused by invalid splash screen data,</li>
+			<li>Sidebar icons/&quot;segments&quot; not displaying on SwanCrystal units (missing TFT configuration data).</li>
+		</ul>
+		</p>
+		<p>The installation software can also be used to install other, non-BootFriend boot splashes.</p>
+	</div>
+	<div class="pure-u-1-1">
+		<h2>Installation</h2>
+		<p>The installation software has been tested on multiple consoles and effort has been put in to validate its stability. However, as I am not in a position to guarantee its operation, I am obliged to inform you that:</p>
+		<p id="warranty-disclaimer">
+<b>THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</b>
+		</p>
+		<p><b>Requirements:</b></p>
+		<ul>	
+			<li><b>WonderSwan Color</b> or <b>SwanCrystal</b> console (<i>not</i> compatible with &quot;mono&quot; WonderSwans),
+			<ul>
+				<li>Alternatively, one may use <b>ares v132</b> (or a recent nightly release) to test the installation procedure.</li>
+			</ul>
+			</li>
+			<li>Installation device (required only for installation). Some options include:
+			<ul>
+				<li>Cartridge capable of running WonderSwan ROM images,</li>
+				<li>Official WonderWitch or WonderWitch Player cartridge (experimental, untested),</li>
+				<li>Other options may be available in the future.</li>
+			</ul>
+			</li>
+			<li>Serial port adapter <i>(optional, but highly recommended - it's one of the firmware's main features)</i>. Some options include:
+			<ul>
+				<li><b><a href="https://github.com/WonderfulToolchain/ws-extfriend">ExtFriend for WS</a></b> - recommended cheap DIY solution, requires Pi Pico + some DIY work,</li>
+				<li>Official WonderWitch serial cable,</li>
+				<li><a href="https://www.retroonyx.com/product-page/wonderswan-usb-link-cable">RetroOnyx aftermarket serial cable</a> - ready-made solution, but costs an eye-watering $85.</li>
+			</ul>
+			</li>
+			<li>Installation files - please configure them below!</li>
+		</ul>
+		</p>
+		<p><b>Configuration:</b></p>
+	</div>
+	<div class="pure-u-1-1">
+		<div class="pure-g" style="justify-content: center;">
+			<div class="pure-u-2-3">
+				<h3 style="text-align: center;">Splash</h3>
+				<div class="pure-button-group" role="group" aria-label="Screen mode" style="margin: 0.5em 0; text-align: center;">
+					<button onclick="bfui_set_eeprom_type(0); return false;" class="pure-button pure-button-active" style="font-size: 75%;" id="input_eeprom_type_0">BootFriend v00 (2023-02-16)</button>
+					<button onclick="bfui_set_eeprom_type(1); return false;" class="pure-button" style="font-size: 75%;" id="input_eeprom_type_1">Custom Splash</button>
+				</div>
+				<div id="eeprom_type_0">
+					<div class="pure-g">
+						<div class="pure-u-1-1">
+							<p>Upload image (.PNG): <input type="file" id="input_bf_image"/></p>
+							<ul style="font-size: 75%; margin-bottom: 1.75em;">
+								<li>The image should be small. (&lt;=64x64 recommended for starters)</li>
+								<li>The width and height should be multiples of 8.</li>
+								<li>The image may not have more than 4 colors in any consecutive 8x8 tile.</li>
+							</ul>
+						</div>
+					</div>
+					<div class="pure-g">
+						<div class="pure-u-1-3">
+							<label for="input_image_alignment">Image alignment</label>
+							<select id="input_image_alignment" oninput="bfui_generate_bootsplash_preview();" class="pure-u-11-12">
+								<option value="0">Top Left</option>
+								<option value="1">Top Center</option>
+								<option value="2">Top Right</option>
+								<option value="3">Center Left</option>
+								<option value="4" selected="selected">Center</option>
+								<option value="5">Center Right</option>
+								<option value="6">Bottom Left</option>
+								<option value="7">Bottom Center</option>
+								<option value="8">Bottom Right</option>
+							</select>
+						</div>
+						<div class="pure-u-1-3">
+							<div class="pure-u-1-1">
+								<label>Offset (horizontal)</label>
+							</div>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_image_offset_hx" step="1" min="-14" value="0" max="14" class="pure-u-5-12"/>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_image_offset_hy" step="1" min="-14" value="-1" max="14" class="pure-u-5-12"/>
+						</div>
+						<div class="pure-u-1-3">
+							<div class="pure-u-1-1">
+								<label>Offset (vertical)</label>
+							</div>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_image_offset_vx" step="1" min="-14" value="0" max="14" class="pure-u-5-12"/>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_image_offset_vy" step="1" min="-14" value="-1" max="14" class="pure-u-5-12"/>
+						</div>
+					</div>
+					<hr/>
+					<div class="pure-g" style="margin-bottom: 1em;">
+						<div class="pure-u-1-3">
+							<label for="input_bf_background_color">Background color</label>
+							<div class="pure-u-11-12">
+								<input data-coloris oninput="bfui_generate_bootsplash_preview();" type="text" value="#ffffff" id="input_bf_background_color" class="pure-u-11-12"></input>
+							</div>
+						</div>
+						<div class="pure-u-1-3">
+							<label for="input_duration">Duration (seconds)</label>
+							<input type="number" id="input_duration" step="0.01" min="1.70" value="1.70" max="3.25" class="pure-u-11-12"/>
+						</div>
+					</div>
+					<div class="pure-g">
+						<div class="pure-u-1-3">
+							<label for="input_duration">Name color</label>
+							<div id="bf_color_selection">
+			
+							</div>
+						</div>
+						<div class="pure-u-1-3">
+							<div class="pure-u-1-1">
+								<label for="input_name_h">Position (horizontal)</label>
+								<input type="checkbox" oninput="bfui_generate_bootsplash_preview();" id="input_name_h" style="margin-left: 2px;" checked/>
+							</div>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_name_hx" step="1" min="0" value="112" max="224" class="pure-u-5-12"/>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_name_hy" step="1" min="0" value="112" max="224" class="pure-u-5-12"/>
+						</div>
+						<div class="pure-u-1-3">
+							<div class="pure-u-1-1">
+								<label for="input_name_v">Position (vertical)</label>
+								<input type="checkbox" oninput="bfui_generate_bootsplash_preview();" id="input_name_v" style="margin-left: 2px;" checked/>
+							</div>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_name_vx" step="1" min="0" value="72" max="224" class="pure-u-5-12"/>
+							<input type="number" oninput="bfui_generate_bootsplash_preview();" id="input_name_vy" step="1" min="0" value="152" max="224" class="pure-u-5-12"/>
+						</div>
+					</div>
+				</div>
+				<div id="eeprom_type_1" class="tab-hidden">
+					<p>Select file: <input type="file" id="input_custom_eeprom"/></p>
+				</div>
+			</div>
+			<div class="pure-u-1-3" style="text-align: center;" id="pane_preview">
+				<h3>Preview</h3>
+				<div style="margin: 0.5em auto; width: 232px; height: 232px; background-color: #ccc; display: flex; align-items: center; justify-content: center;">
+					<canvas id="bf-preview" width="224px" height="144px"></canvas>
+				</div>
+				<div class="pure-button-group" role="group" aria-label="Console orientation">
+					<button onclick="bfui_set_orientation_vertical(false); return false;" class="pure-button pure-button-active" style="font-size: 75%;" id="input_preview_orientation_h">Horizontal</button>
+					<button onclick="bfui_set_orientation_vertical(true); return false;" class="pure-button" style="font-size: 75%;" id="input_preview_orientation_v">Vertical</button>
+				</div>
+				<div class="pure-button-group" role="group" aria-label="Screen mode" style="margin-top: 0.5em;">
+					<button onclick="bfui_set_screen_mode(0); return false;" class="pure-button pure-button-active" style="font-size: 75%;" id="input_preview_mode_0">TFT</button>
+					<button onclick="bfui_set_screen_mode(1); return false;" class="pure-button" style="font-size: 75%;" id="input_preview_mode_1">IPS</button>
+				</div>
+			</div>
+	</div>
+	<div class="pure-u-1-1" style="margin-bottom: 0.25em; margin-top: 0.5em; text-align: center;">
+		<p>Note that none of the above configuration options need to be changed - if you don't want to customize your splash screen, you can just download the installer as-is by clicking below.</p>
+		<p><input type="checkbox" id="bf-warranty-check"/> I have read and agree to the warranty disclaimer <a href="#warranty-disclaimer">above</a>.</p>
+	</div>
+	<div class="pure-u-1-1" style="margin-bottom: 0.125em; text-align: center;">
+		<button onclick="bf_download('bootfriend-inst.wsc', bf_generate_image('rom')); return false;"
+				class="pure-button pure-button-primary" style="width: 480px;">Download bootfriend-inst.wsc (Cartridge)</button>
+	</div>
+	<div class="pure-u-1-1" style="margin-bottom: 0.125em; text-align: center;">
+		<button onclick="bf_download('bootfriend-inst-wwsystem.bin', bf_generate_image('wwsoft')); return false;"
+				class="pure-button" style="width: 480px;">Download bootfriend-inst-wwsystem.bin (WonderWitch)</button>
+	</div>
+	<div class="pure-u-1-1" style="margin-bottom: 1.75em; text-align: center;">
+		<button onclick="bf_download('bootfriend.bin', bf_generate_image('raw')); return false;"
+				class="pure-button" style="width: 480px;">Download bootfriend.bin (raw splash data)</button>
+	</div>
+	<div class="pure-u-1-1">
+		<p><b>Installation Guide (Cartridge):</b></p>
+		<ol>
+			<li>Flash <b>bootfriend-inst.wsc</b> to the cartridge.
+			<ul>
+				<li>If your cartridge of choice uses a multiple choice menu, it is advisable to flash the installation program in place of said menu.</li>
+			</ul>
+			</li>
+			<li>Launch the cartridge. Examine the information on the status bar (top row).
+			<ul>
+				<li>If the status bar says <b>EEP locked</b>, BootFriend cannot be installed. Make sure you've flashed the installer correctly.</li>
+				<li>The <b>Test BootFriend</b> option allows you to test the program serial port loader without installing the splash screen. This is useful for ensuring that your serial port adapter will work with the firmware.</li>
+				<li>The <b>Disable/Enable custom splash</b> option allows you to disable a custom splash (to fix console freezes/hangs related to them) or enable one.
+				<ul>
+					<li>Note that, on SwanCrystal, there is a factory custom splash screen, which is slightly different from the built-in one. The built-in splash screen is identical to the WonderSwan Color.</li>
+				</ul>
+				</li>
+				<li>The <b>SwanCrystal TFT recovery</b> option allows you to fix missing TFT configuration data, as explained above.</li>
+			</ul>
+			<li>Select <b>Install BootFriend</b> and follow the instructions.
+			<ul>
+				<li>The right-hand side of the status bar should now say <b>BF v.??</b> - this indicates a BootFriend installation.</li>
+			</ul>
+			</li>
+			<li>Once done, turn off the console. You can hold <b>Y3</b> on boot to check for a successful BootFriend installation.
+			<ul>
+				<li>Note that <b>bootfriend-inst.wsc</b> disables custom splashes! You'll need to flash different data, or use a different cartridge, to verify BootFriend's operation.</li>
+			</ul>
+			</li>
+		</ol>
+		<p><b>Installation Guide (WonderWitch):</b></p>
+		<ol>
+			<li>The WonderWitch installer is currently only provided as an &quot;OS Upgrade&quot;. Therefore, the installation process is a little different from a typical WonderWitch program:
+			<ul>
+				<li>Start WonderWitch in <b>Freya Monitor</b> mode - hold B while the console is turning on.</li>
+				<li>Configure the serial baud rate in the Setup menu.</li>
+				<li>Select <b>Recv System</b> and upload the <b>bootfriend-inst-wwsystem.bin</b> file using XMODEM.</li>
+			</ul>
+			</li>
+			<li>Follow instruction steps 2-4 from the &quot;Cartridge&quot; installation guide.</li>
+		</ol>
+		<p>A &quot;.fx&quot; version of the installer may be provided in the future.</p>
+	</div>
+	<div class="pure-u-1-1">
+		<h2>Changelog</h2>
+		<p><b>BootFriend v00 (2023-02-16)</b></p>
+		<ul>
+			<li>First release.</li>
+		</ul>
+	</div>
+	<div class="pure-u-1-1">
+		<h2>Additional software ♪</h2>
+		<h3 id="soft-ws-backup-tool">WS Backup Tool</h3>
+		<p>This utility allows you to use XMODEM transfers via the EXT port to:</p>
+		<ul>
+			<li>Dump the WonderSwan IPL (boot ROM),</li>
+			<li>Backup game data and save files,</li>
+			<li>Restore game save files,</li>
+			<li>Erase game save files,</li>
+			<li>Reflash WonderWitch and other reflashable cartridges (experimental!).</li>
+		</ul>
+		<p></p>
+		<ul>
+			<li><a href="ws-backup-tool-v0.1.bfb">Download .bfb (v0.1, 2023-02-16)</a></li>
+			<li><a href="https://github.com/asiekierka/ws-backup-tool">Source code</a></li>
+		</ul>
+		<h3 id="soft-wsmonitor">WSMonitor</h3>
+		<p>Created by <a href="https://twitter.com/trap0xf">trap15</a>, this utility acts as a rudimentary hardware state monitor for the WonderSwan, allowing examining the state of memory and I/O ports. Notably, using BootFriend, one can run WSMonitor <i>before</i> IPL/boot ROM lockout.</p>
+		<ul>
+			<li><a href="wsmonitor.bfb">Download .bfb</a></li>
+			<li><a href="https://bitbucket.org/trap15/wsmonitor">Source code</a></li>
+		</ul>
+	</div>
+	<div class="pure-u-1-1">
+		<h2>Credits ♥</h2>
+		<p>BootFriend is a project by myself, that is <a href="https://asie.pl/">asie</a>.</p>
+		<p>Special thanks to:
+		<ul>
+			<li>lidnariq, for providing the inspiration necessary to pursue this project,</li>
+			<li>Godzil, for figuring out the splash screen format,</li>
+			<li>Dox, trap15, FluBBa, GuyPerfect, Near, and many others who helped figure out and document the WonderSwan's mysteries,</li>
+		</ul>
+		</p>
+		<p style="padding-bottom: 1em;">... and viewers like you!</p>
+	</div>
+</div>
+
+<script type="text/javascript" src="index.js"></script>
+<script type="text/javascript" src="resources.js"></script>
+</body>
+</html>
