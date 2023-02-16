@@ -331,6 +331,17 @@ uint8_t menu_show_main(void) {
 static const char IN_ROM msg_backup_check[] = "Would you like to backup your internal EEPROM to cartridge save RAM first?";
 
 void do_backup_check(void) {
+#ifndef TARGET_WWITCH
+	// Check if we're not running on WonderWitch
+	uint8_t __far* freya_bios_header = (uint8_t __far*) MK_FP(0xF000, 0x0000);
+	if (freya_bios_header[0] == 'E'
+		&& freya_bios_header[1] == 'L'
+		&& freya_bios_header[2] == 'I'
+		&& freya_bios_header[3] == 'S'
+		&& freya_bios_header[4] == 'A') {
+		return;
+	}
+
 	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
 	ws_boot_splash_header_t __far* provided_header = (ws_boot_splash_header_t __far*) MK_FP(0x1000, 0x0080);
 
@@ -345,6 +356,7 @@ void do_backup_check(void) {
 		}
 		ui_clear_lines(3, 3);
 	}
+#endif
 }
 
 void menu_main(void) {
