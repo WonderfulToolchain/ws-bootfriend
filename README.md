@@ -13,3 +13,8 @@ The **.bfb** format is used to create binaries that can be booted by BootFriend.
   * If the address is **0xFFFF**, the code is assumed to be position-independent.
   * BootFriend currently only supports loading code between **0x6800** and **0xFDFF**.
 * **bytes 4...** - program data.
+
+The entrypoint is as follows:
+
+* **0???:0000** - position-independent code (starting address 0xFFFF),
+* **0000:ABCD** - any other starting address (f.e. 0xABCD).
