@@ -11,8 +11,17 @@ function bf_reverse_bits(x) {
 // Tileset/tilemap conversion
 
 const boot_tile_offset = 46;
+var bfimg_inverse_color_correct = false;
 
 function bfimg_color_to_ws(r, g, b) {
+    if (bfimg_inverse_color_correct) {
+        var r2 = (r *  124  - g *  20 - b *   4) / 100;
+        var g2 = (r *   12  + g * 140 - b *  52) / 100;
+        var b2 = (r * (-36) - g *  20 + b * 156) / 100;
+        r = Math.max(0, Math.min(255, Math.floor(r2)));
+        g = Math.max(0, Math.min(255, Math.floor(g2)));
+        b = Math.max(0, Math.min(255, Math.floor(b2)));
+    }
     return ((r & 0xF0) << 4) | (g & 0xF0) | (b >> 4);
 }
 
@@ -26,10 +35,21 @@ function bfimg_xy_to_idx(x, y) {
     return (x << 12) | y;
 }
 
+function bfimg_1bpp_to_n1_tile(t, bpp) {
+    var u = [];
+    for (var i = 0; i < t.length; i++) {
+        u.push(t[i]);
+        for (var j = 1; j < bpp; j++) {
+           u.push(0);
+        }
+    }
+    return u;
+}
+
 function bfimg_hflip_tile(t, bpp) {
     var u = [];
     for (var i = 0; i < t.length; i++) {
-        u.push(bf_reverse_bits(t[i])); 
+        u.push(bf_reverse_bits(t[i]));
     }
     return u;
 }
@@ -167,6 +187,10 @@ function bfimg_to_tilemap(imageData, backgroundColor) {
     var tileData = [];
     var tileMap = [];
     var tileDataMap = new Map();
+
+    // predefined tiles
+    tileDataMap[bfimg_1bpp_to_n1_tile([0, 0, 0, 0, 0, 0, 0, 0], bpp)] = 0;
+
     for (var iy = 0; iy < imageData.height; iy += 8) {
         for (var ix = 0; ix < imageData.width; ix += 8) {
             var palidx = palettePerTileIdx[bfimg_xy_to_idx(ix, iy)];
@@ -211,15 +235,15 @@ function bfimg_to_tilemap(imageData, backgroundColor) {
                             tileMapIndex = tileDataMap[vhtile.join(",")];
                         } else {
                             tileData.push(...tile);
-                            tileDataMap[tile.join(",")] = tileIndex;
-                            tileMapIndex = tileIndex;
+                            tileDataMap[tile.join(",")] = tileIndex + boot_tile_offset;
+                            tileMapIndex = tileIndex + boot_tile_offset;
                             tileIndex += 1;
                         }
                     }
                 }
             }
 
-            tileMapEntry |= (tileMapIndex + boot_tile_offset);
+            tileMapEntry |= tileMapIndex;
             tileMap.push(tileMapEntry & 0xFF);
             tileMap.push(tileMapEntry >> 8);
         }
@@ -266,7 +290,10 @@ function bfimg_tilemap_to_imagedata(tm) {
     for (var iy = 0; iy < imageData.height; iy += 8) {
         for (var ix = 0; ix < imageData.width; ix += 8, tmi += 2) {
             var tm_entry = tm.map[tmi] | (tm.map[tmi + 1] << 8);
-            var tm_tileidx = (tm_entry & 0x1FF) - boot_tile_offset;
+            var tm_tileidx = (tm_entry & 0x1FF);
+            if (tm_tileidx == 0) continue;
+            tm_tileidx -= boot_tile_offset;
+
             var tm_tileofs = tm_tileidx*(4 << bpp);
             var tm_pal = (tm_entry >> 9) & 0x0F;
             var tm_palofs = tm_pal*(2 << bpp);
@@ -411,6 +438,11 @@ function bfui_set_screen_mode(idx) {
         if(idx != i) document.getElementById("input_preview_mode_" + i).classList.remove("pure-button-active");
         else document.getElementById("input_preview_mode_" + i).classList.add("pure-button-active");
     }
+    bfui_generate_bootsplash_preview();
+}
+
+function bfui_change_inverse_color_correction() {
+    bfimg_inverse_color_correct = document.getElementById("input_image_inverse_color_correction").checked;
     bfui_generate_bootsplash_preview();
 }
 

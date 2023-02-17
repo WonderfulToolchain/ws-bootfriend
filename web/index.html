@@ -90,7 +90,13 @@
 				<div id="eeprom_type_0">
 					<div class="pure-g">
 						<div class="pure-u-1-1">
-							<p>Upload image (.PNG): <input type="file" id="input_bf_image"/></p>
+							<p>
+								Upload image (.PNG): <input type="file" id="input_bf_image"/>
+							</p>
+							<p>
+								<input type="checkbox" oninput="bfui_change_inverse_color_correction();" id="input_image_inverse_color_correction"/>
+								<label for="input_image_inverse_color_correction">Invert color collection on import</label>
+							</p>
 							<ul style="font-size: 75%; margin-bottom: 1.75em;">
 								<li>The image should be small. (&lt;=64x64 recommended for starters)</li>
 								<li>The width and height should be multiples of 8.</li>
