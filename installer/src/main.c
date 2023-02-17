@@ -41,7 +41,7 @@ void vblank_int_handler(void) {
 
 // Must be 24 chars
 //                                      1234567890123456789012345678
-static const char IN_ROM bfi_title[] = "bootfriend-inst devel. build";
+static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui02";
 static const char IN_ROM bfi_eeprom_locked[] = "EEP locked";
 static const char IN_ROM bfi_eeprom_unlocked[] = "EEP unlocked";
 static const char IN_ROM bfi_no_splash[] = "no splash";
@@ -260,7 +260,7 @@ static void recovery_swancrystal(void) {
 	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
 
 	for (uint8_t i = 0; i < 8; i += 2) {
-		uint16_t w = *((uint16_t*) (swancrystal_factory_tft_data + i));
+		uint16_t w = *((uint16_t __far*) (swancrystal_factory_tft_data + i));
 		uint16_t w2 = ws_eeprom_read_word(ieep_handle, 0xAE + i);
 		if (w != w2) {
 			ws_eeprom_write_word(ieep_handle, 0xAE + i, w);

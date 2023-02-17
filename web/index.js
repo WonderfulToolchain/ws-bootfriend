@@ -580,19 +580,21 @@ function bf_generate_bootsplash() {
 
     splashData[0x0C] = idx & 0xFF;
     splashData[0x0D] = idx >> 8;
-    splashData.set(tm.palette, idx);
-    splashData[idx] = bgColor & 0xFF;
-    splashData[idx + 1] = bgColor >> 8;
+    if(idx + tm.palette.length <= splashData.length) {
+        splashData.set(tm.palette, idx);
+        splashData[idx] = bgColor & 0xFF;
+        splashData[idx + 1] = bgColor >> 8;
+    }
     idx += tm.palette.length;
 
     splashData[0x0E] = idx & 0xFF;
     splashData[0x0F] = idx >> 8;
-    splashData.set(tm.tiles, idx);
+    if(idx + tm.tiles.length <= splashData.length) splashData.set(tm.tiles, idx);
     idx += tm.tiles.length;
 
     splashData[0x10] = idx & 0xFF;
     splashData[0x11] = idx >> 8;
-    splashData.set(tm.map, idx);
+    if(idx + tm.map.length <= splashData.length) splashData.set(tm.map, idx);
     idx += tm.map.length;
 
     var screenDestH = 2 * (imageLocs[0][0] + (imageLocs[0][1] * 32)) + 0x800;
@@ -614,15 +616,17 @@ function bf_generate_bootsplash() {
 	return splashData;
 }
 
-function bf_generate_title() {
+function bf_generate_title(verHi, verLo) {
+    var verStr = String.fromCharCode(verHi, verLo);
+
 	var date = new Date();
 	var dateString = bf_pad_zeros(date.getFullYear() % 100, 2)
 		+ bf_pad_zeros(date.getMonth() + 1, 2)
 		+ bf_pad_zeros(date.getDate(), 2)
 		+ bf_pad_zeros(date.getHours(), 2)
 		+ bf_pad_zeros(date.getMinutes(), 2);
-	if (bf_eeprom_type == 0) return "bootfriend-inst " + dateString;
-    else return "ieepsplash-inst " + dateString;
+	if (bf_eeprom_type == 0) return "bootfriend-inst" + verStr + " " + dateString;
+    else return "ieepsplash-inst" + verStr + " " + dateString;
 }
 
 function bf_typedArray_indexOf(haystack, needle) {
@@ -644,7 +648,7 @@ function bf_generate_splashdata() {
 
 function bf_generate_rom() {
 	var rom_index = bf_typedArray_indexOf(bin_bootfriend_inst_rom, "bFtMp");
-	var title_index = bf_typedArray_indexOf(bin_bootfriend_inst_rom, "bootfriend-inst devel. build");
+	var title_index = bf_typedArray_indexOf(bin_bootfriend_inst_rom, "bootfriend-inst devel. bui");
 
     var splashdata = bf_generate_splashdata();
     if (splashdata == null) return;
@@ -652,7 +656,7 @@ function bf_generate_rom() {
 	var rom = new Uint8Array(131072);
 	rom.set(bin_bootfriend_inst_rom);
     rom.set(splashdata, rom_index);
-	rom.set(Uint8Array.from(bf_pad_string(bf_generate_title(), 28), c => c.charCodeAt(0)), title_index);
+	rom.set(Uint8Array.from(bf_pad_string(bf_generate_title(rom[title_index + 26], rom[title_index + 27]), 28), c => c.charCodeAt(0)), title_index);
 
 	return rom;
 }
