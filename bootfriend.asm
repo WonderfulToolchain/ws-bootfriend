@@ -354,8 +354,6 @@ loader_full_read_block:
 	call loader_putc ; Output status character
 	cmp bl, 42
 	jne loader_full_read_block_resend_nak ; Resend NAK if error
-	ret
-	
 loader_full_read_block_end:
 	ret
 
