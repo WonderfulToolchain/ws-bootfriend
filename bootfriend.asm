@@ -110,6 +110,24 @@ vblankHandler:
 	popa
 	retf
 
+bootfriend_hello:
+	call bootfriend_takeover_init
+	mov bl, 12 ; 'B'
+	call loader_putc
+	mov bl, 16 ; 'F'
+	call loader_putc
+	mov bl, cs:[bootFriendVersion]
+	push bx
+	shr bl, 4
+	inc bx ; inc bl, but inc bx is safe here as we pop bx later
+	call loader_putc
+	pop bx
+	and bl, 0x0F
+	inc bx ; inc bl, but inc bx is safe here as it will only affect bl
+	call loader_putc
+	xor ax, ax ; test always zero
+	mov cs:[vbl_noPCv2Strap + 1], al
+
 bootfriend_loop:
 	hlt
 	call bootfriend_check
@@ -141,31 +159,10 @@ bootfriend_check:
 
 vbl_noPCv2Strap:
 	test al, 0x04 ; Hello mode? (Y3)
-vbl_jumpToNoHelloMode:
-	jz vbl_noHelloMode
-
-	; Say hello
-	call bootfriend_takeover_init
-	mov bl, 12 ; 'B'
-	call loader_putc
-	mov bl, 16 ; 'F'
-	call loader_putc
-	mov bl, cs:[bootFriendVersion]
-	push bx
-	shr bl, 4
-	inc bx ; inc bl, but inc bx is safe here as we pop bx later
-	call loader_putc
-	pop bx
-	and bl, 0x0F
-	inc bx ; inc bl, but inc bx is safe here as it will only affect bl
-	call loader_putc
-	mov al, 0xEB ; jump always
-	mov cs:[vbl_jumpToNoHelloMode], al
-	jmp bootfriend_loop
+	jnz bootfriend_hello
 	
-vbl_noHelloMode:
 	test al, 0x02 ; 9600 baud mode? (Y2)
-	mov al, 0xC0
+	mov al, 0xA0
 	jnz vbl_use9600Baud
 
 	; 38400 baud mode
