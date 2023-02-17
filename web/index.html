@@ -10,7 +10,7 @@
 		a, a:visited { color: #27c; text-decoration: none; }
 		a:hover { color: #6ae; text-decoration: none; }
 		li { margin-bottom: 0.25em; }
-		li > ul { margin-top: 0.625em; padding-bottom: 0.125em; }
+		li > ul, li > ol { margin-top: 0.625em; padding-bottom: 0.125em; }
 		h1, h2 { text-align: center; }
 		label { margin-bottom: 0.25em; display: inline-block; }
 		.tab-hidden { display: none; }
@@ -95,7 +95,7 @@
 							</p>
 							<p>
 								<input type="checkbox" oninput="bfui_change_inverse_color_correction();" id="input_image_inverse_color_correction"/>
-								<label for="input_image_inverse_color_correction">Invert color collection on import</label>
+								<label for="input_image_inverse_color_correction">Apply TFT color correction on import</label>
 							</p>
 							<ul style="font-size: 75%; margin-bottom: 1.75em;">
 								<li>The image should be small. (&lt;=64x64 recommended for starters)</li>
@@ -257,6 +257,52 @@
 		<p><b>BootFriend v00 (installer v01) (2023-02-16)</b></p>
 		<ul>
 			<li>First release.</li>
+		</ul>
+	</div>
+	<div class="pure-u-1-1">
+		<h2>Usage</h2>
+		<ul>
+			<li>To run a .bfb program (see the &quot;Additional software&quot; section below), perform the following steps:
+			<ol>
+				<li>Initiate an XMODEM file transfer on the PC side. This has to be done first.
+				<ul>
+					<li>Note that BootFriend uses a <b>38400 bps</b> serial port speed by default.</li>
+					<li>On Windows, you may use <a href="https://osdn.net/projects/ttssh2/releases/">Tera Term</a> to initiate an XMODEM file transfer:
+					<ol>
+						<li>Setup -> Serial Port... -> select Port, Speed; set Data: 8 bit, Parity: none, Stop bits: 1 bit, Flow control: none.</li>
+						<li>File -> Transfer -> XMODEM -> Send...</li>
+					</ol>
+					</li>
+					<li>On Linux, you may use minicom in a terminal prompt to initiate an XMODEM file transfer:
+					<ol>
+						<li>Run &quot;minicom -D [device]&quot;; for ExtFriend, the device will typically be /dev/ttyACM0.</li>
+						<li>Press Ctrl+A, then O, then select &quot;Serial port setup&quot;:
+						<ul>
+							<li>Set &quot;Bps/Par/Bits&quot; to the correct speed, then press Q to set 8N1.</li>
+							<li>Set Hardware and Software Flow Control to &quot;No&quot;.</li>
+						</ul>
+						</li>
+						<li>Press Ctrl+A, then S, then select &quot;xmodem&quot;.</li>
+					</ol>
+					</li>
+				</ul>
+				</li>
+				<li>Turn on the BootFriend-enabled WonderSwan console.</li>
+				<li>If done correctly, the PC should notify that a transfer has started, while the WonderSwan's screen should populate with dots.
+				<ul>
+					<li>Each dot corresponds to one block - 128 bytes - of data.</li>
+					<li>Letters in this process correspond to errors, some of which are recoverable and will result in an automatic attempt to retry transfer:
+					<ul>
+						<li><b>A</b>, <b>B</b>, <b>K</b> - corrupt information in transferred block,</li>
+						<li><b>C</b> - transfer cancelled by sending side,</li>
+						<li><b>D</b> - received file has invalid format,</li>
+						<li><b>R</b> - the received file's requested RAM area is out of permitted range.</li>
+					</ul>
+					</li>
+				</ul>
+				</li>
+			</ol>
+			</li>
 		</ul>
 	</div>
 	<div class="pure-u-1-1">
