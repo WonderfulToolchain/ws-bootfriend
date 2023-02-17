@@ -153,11 +153,11 @@ vbl_jumpToNoHelloMode:
 	mov bl, cs:[bootFriendVersion]
 	push bx
 	shr bl, 4
-	inc bl
+	inc bx ; inc bl, but inc bx is safe here as we pop bx later
 	call loader_putc
 	pop bx
 	and bl, 0x0F
-	inc bl
+	inc bx ; inc bl, but inc bx is safe here as it will only affect bl
 	call loader_putc
 	mov al, 0xEB ; jump always
 	mov cs:[vbl_jumpToNoHelloMode], al
@@ -302,9 +302,9 @@ loader_non_relocatable:
 
 	; Read next blocks.
 loader_next_block:
-	cmp di, 0xFE00
+	cmp di, 0xFD80
 	mov bl, 28 ; 'R'
-	je loader_fail_end
+	jae loader_fail_end
 	push di
 
 	call loader_full_read_block
@@ -319,8 +319,7 @@ loader_next_block:
 	mov cx, (128 >> 1)
 	rep movsw
 
-	mov al, ACK
-	call serial_putc_block
+	call serial_putc_ack
 	jmp loader_next_block
 
 loader_blocks_done:
@@ -328,8 +327,7 @@ loader_blocks_done:
 	cmp bl, [xmLastDownloadFailed]
 	jne loader_fail_end_loop
 
-	mov al, ACK
-	call serial_putc_block
+	call serial_putc_ack
 	
 	jmp far [ldStartAddr]
 
@@ -342,14 +340,18 @@ loader_full_read_block_resend_nak:
 	call serial_putc_block
 loader_full_read_block:
 	call serial_getc_block
+
 	cmp al, CAN
 	mov bl, 13 ; 'C'
 	je loader_fail_end ; Cancelled - nothing we can do
+
 	cmp al, EOT
 	mov bl, 0xFF ; <nothing>
 	je loader_full_read_block_end ; EOT - finish reading blocks
+
 	cmp al, SOH
 	jne loader_full_read_block_resend_nak ; !SOH - NAK?
+
 	call loader_read_block ; SOH - read full block
 	mov [xmLastDownloadFailed], bl
 	call loader_putc ; Output status character
@@ -415,6 +417,8 @@ serial_getc_block:
 	ret
 
 	; Read one byte from the serial port into AL.
+serial_putc_ack:
+	mov al, ACK
 serial_putc_block:
 	push ax
 	in al, IO_SERIAL_STATUS
