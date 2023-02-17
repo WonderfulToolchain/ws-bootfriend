@@ -12,6 +12,7 @@ LDFLAGS += -Wl,--gc-sections -Wl,--print-gc-sections
 SLFLAGS := --heap-length 0x1800 --color --rom-size 2 --load-offset 0xE0000 --ram-type SRAM_8KB --unlock-ieep
 SLFLAGS += --disable-custom-bootsplash
 TARGET := bootfriend_inst.wsc
+TARGET_BFB := bootfriend_inst.bfb
 
 SRCDIRS := res src
 CSOURCES := $(foreach dir,$(SRCDIRS),$(notdir $(wildcard $(dir)/*.c)))
@@ -28,10 +29,13 @@ vpath %.S $(SRCDIRS)
 
 .PHONY: all clean install
 
-all: $(TARGET)
+all: $(TARGET) $(TARGET_BFB)
 
 $(TARGET): $(OBJECTS)
 	$(SWANLINK) -v -o $@ --output-elf $@.elf $(SLFLAGS) --linker-args $(LDFLAGS) $(WF_CRT0) $(OBJECTS) $(LIBS)
+
+$(TARGET_BFB): $(OBJECTS)
+	$(SWANLINK) -v -o $@ -t bootfriend_binary --output-elf $@.elf $(SLFLAGS) --linker-args $(LDFLAGS) $(WF_CRT0) $(OBJECTS) $(LIBS)
 
 $(OBJDIR)/%.o: %.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c -o $@ $<

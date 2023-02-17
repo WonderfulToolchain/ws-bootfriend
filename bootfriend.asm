@@ -118,10 +118,9 @@ bootfriend_loop:
 bootfriend_check:
 	push ds
 	push es
-	push ss
-	push ss
-	pop es
-	pop ds
+	xor ax, ax
+	mov ds, ax
+	mov es, ax 
 
 	mov al, 0x10
 	out 0xB5, al
@@ -186,10 +185,9 @@ vbl_jumpToInitDone:
 	; Configure serial RX handler
 	cld
 	in al, IO_HWINT_VECTOR
-	and al, 0xF8
-	xor ah, ah
+	and ax, 0x00F8
 	shl ax, 2
-	add ax, (HWINT_IDX_SERIAL_RX << 2)
+	or al, (HWINT_IDX_SERIAL_RX << 2)
 	mov di, ax
 	mov ax, irq_serial
 	stosw
@@ -236,7 +234,12 @@ bootfriend_takeover_init:
 	; Set DS/ES.
 	xor ax, ax
 	mov ds, ax
-	mov es, ax
+	mov es, ax 
+
+	; Clear memory - assumes AX = 0x0000
+	mov di, 0xFFA0
+	mov cx, 0x08
+	rep stosw
 
 	; Init display
 	mov di, 0xFE00
@@ -244,19 +247,13 @@ bootfriend_takeover_init:
 	out IO_SCR1_SCRL_X, ax ; Clear Screen 1 scroll
 	stosw ; Set color 0:0 to black
 
-	; Clear memory (assumes AX = 0x0000)
-	push di
-	mov di, 0xFFA0
-	mov cx, 0x08
-	rep stosw
-	pop di
-
 	; Init display, part 2
 	not ax
 	stosw ; Set color 0:1 to white
 	mov ax, 0x0001
 	out IO_DISPLAY_CTRL, ax
 	mov [xmExpectedId], al
+
 	ret
 
 ; BARE-BONES XMODEM LOADER
@@ -277,14 +274,14 @@ loader_first_block_done:
 	mov si, xmBuffer
 	lodsw ; Magic
 	cmp ax, 0x4662 ; 'bF'
-	mov bl, 14; 'D'
+	mov bl, 14 ; 'D'
 	jb loader_fail_end
 
 	lodsw ; Address
 	mov [ldStartAddr], ax
 	cmp ax, 0xFFFF
 	jne loader_non_relocatable
-	xor ax, ax
+	inc ax ; == xor ax, ax here
 	mov [ldStartAddr], ax
 	mov ax, 0x0680
 	mov [ldStartOffs], ax

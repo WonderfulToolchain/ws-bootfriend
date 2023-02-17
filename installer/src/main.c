@@ -191,6 +191,7 @@ static void install_bootfriend(void) {
 
 	for (uint16_t i = /* 0x06 */ 0x04; i < _bootfriend_bin_size; i += 2) {
 		uint16_t w = _bootfriend_bin[i] | (_bootfriend_bin[i + 1] << 8);
+		if (i == 4 && (w & 0xFF) == 'p') w = w & 0xFF00;
 		uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 		// skip SwanCrystal data block
 		if (!(i >= 0x2C && i < 0x38)) {
@@ -392,6 +393,7 @@ int main(void) {
 	statusbar_update();
 
 #ifndef TARGET_WWITCH
+	outportb(IO_HWINT_ACK, 0xFF);
 	ws_hwint_set_handler(HWINT_IDX_VBLANK, vblank_int_handler);
 	ws_hwint_enable(HWINT_VBLANK);
 	cpu_irq_enable();
