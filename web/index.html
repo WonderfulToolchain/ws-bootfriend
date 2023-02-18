@@ -46,6 +46,7 @@
 		</ul>
 		</p>
 		<p>The installation software can also be used to install other, non-BootFriend boot splashes.</p>
+		<p><b>If you're looking to back up the IPL of the &quot;mono&quot; WonderSwan, feel free to try <a href="https://github.com/up-n-atom/wwsoft/wiki/IPL-Dumper">up-n-atom's dumpipl</a>.</b></p>
 	</div>
 	<div class="pure-u-1-1">
 		<h2>Installation</h2>
@@ -245,15 +246,17 @@
 			<ul>
 				<li>Start WonderWitch in <b>Freya Monitor</b> mode - hold B while the console is turning on.</li>
 				<li>Configure the serial baud rate in the Setup menu.</li>
-				<li>Select <b>Send System</b> and download a backup of the currently installed OS using XMODEM.
+				<li>Select <b>Send System</b> and download a backup of the currently installed OS.
 				<ul>
+					<li>For downloading and uploading the OS, one can use an XMODEM transfer tool (as described in &quot;Usage&quot;), or TransMagic's built-in FreyaOS update functionality.</li>
 					<li>If you forget to do this, you can find a copy of FreyaOS 1.2.0 on <a href="http://wonderwitch.qute.co.jp/index_wwp.html">Qute's website</a> (=> ダウンロード).</li>
 				</ul>
 				</li>
-				<li>Select <b>Recv System</b> and upload the <b>bootfriend-inst-wwsystem.bin</b> file using XMODEM.</li>
+				<li>Select <b>Recv System</b> and upload the <b>bootfriend-inst-wwsystem.bin</b> file.</li>
 			</ul>
 			</li>
 			<li>Follow instruction steps 2-4 from the &quot;Cartridge&quot; installation guide.</li>
+			<li>Launch <b>Freya Monitor</b> again, and use <b>Recv System</b> with a copy of FreyaOS to restore the original operating system.</li>
 		</ol>
 		<p>A &quot;.fx&quot; version of the installer may be provided in the future.</p>
 	</div>
@@ -327,7 +330,7 @@
 		</ul>
 		<p></p>
 		<ul>
-			<li><a href="ws-backup-tool-v0.1.bfb">Download .bfb (v0.1, 2023-02-16)</a></li>
+			<li><a href="ws-backup-tool-v0.1.1.bfb">Download .bfb (v0.1.1, 2023-02-18)</a></li>
 			<li><a href="https://github.com/asiekierka/ws-backup-tool">Source code</a></li>
 		</ul>
 		<h3 id="soft-wsmonitor">WSMonitor</h3>
