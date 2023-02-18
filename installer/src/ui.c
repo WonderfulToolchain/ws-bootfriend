@@ -18,6 +18,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ws.h>
+#ifdef TARGET_WWITCH
+#include <sys/libwwc.h>
+#endif
 #include "input.h"
 #include "ui.h"
 #include "font_default.h"
@@ -75,6 +78,14 @@ void ui_printf(uint8_t x, uint8_t y, uint8_t color, const char __far* format, ..
     ui_puts(x, y, color, buf);
 }
 
+#ifdef TARGET_WWITCH
+#define ui_palette_set_color wwc_palette_set_color
+#else
+static inline void ui_palette_set_color(uint8_t idx, uint8_t sub_idx, uint16_t color) {
+	MEM_COLOR_PALETTE(idx)[sub_idx] = color;
+}
+#endif
+
 void ui_init(void) {
     const uint8_t __far* src = _font_default_bin;
     uint16_t __far* dst = (uint16_t __far*) MK_FP(0x0000, 0x2000);
@@ -97,16 +108,16 @@ void ui_init(void) {
     ws_mode_set(WS_MODE_COLOR);
 
     // set palettes
-    MEM_COLOR_PALETTE(COLOR_BLACK)[0] = 0x0FFF;
-    MEM_COLOR_PALETTE(COLOR_BLACK)[1] = 0x0000;
-    MEM_COLOR_PALETTE(COLOR_GRAY)[0] = 0x0FFF;
-    MEM_COLOR_PALETTE(COLOR_GRAY)[1] = 0x0BBB;
-    MEM_COLOR_PALETTE(COLOR_RED)[0] = 0x0FFF;
-    MEM_COLOR_PALETTE(COLOR_RED)[1] = 0x0F00;
-    MEM_COLOR_PALETTE(COLOR_SELECTED)[0] = 0x0000;
-    MEM_COLOR_PALETTE(COLOR_SELECTED)[1] = 0x0FFF;
-    MEM_COLOR_PALETTE(COLOR_TITLE)[0] = 0x0842;
-    MEM_COLOR_PALETTE(COLOR_TITLE)[1] = 0x0FD4;
+    ui_palette_set_color(COLOR_BLACK, 0, 0x0FFF);
+    ui_palette_set_color(COLOR_BLACK, 1, 0x0000);
+    ui_palette_set_color(COLOR_GRAY, 0, 0x0FFF);
+    ui_palette_set_color(COLOR_GRAY, 1, 0xBBB);
+    ui_palette_set_color(COLOR_RED, 0, 0x0FFF);
+    ui_palette_set_color(COLOR_RED, 1, 0x0F00);
+    ui_palette_set_color(COLOR_SELECTED, 0, 0x0000);
+    ui_palette_set_color(COLOR_SELECTED, 1, 0x0FFF);
+    ui_palette_set_color(COLOR_TITLE, 0, 0x0842);
+    ui_palette_set_color(COLOR_TITLE, 1, 0x0FD4);
 }
 
 static void ui_menu_draw_entry(menu_entry_t __far* entry, uint8_t y, bool selected) {
