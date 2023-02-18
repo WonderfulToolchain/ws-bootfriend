@@ -25,7 +25,7 @@
 	<div class="pure-u-1-1">
 		<h1>BootFriend for WS</h1>
 		<p style="padding-bottom: 0.6em; text-align: center;"><i>So you're a Friend who's good at booting homebrew? <a href="https://twitter.com/sasakure__UK/status/846922987991281665">Sugoi~!</a></i></p>
-		<p><b>BootFriend</b> is a custom &quot;firmware&quot; solution compatible with the WonderSwan Color and SwanCrystal handheld consoles. It provides the following features:</p>
+		<p><b>BootFriend</b> is a custom &quot;firmware&quot; solution, in the form of a modified splash screen, compatible with the WonderSwan Color and SwanCrystal handheld consoles. It provides the following features:</p>
 		<ul>
 			<li>Custom startup splash screen - faster boot times, custom logo,</li>
 			<li>Launch cartridges in Pocket Challenge V2/&quot;pin-strapped&quot; mode - hold <b>Y1</b> on boot,</li>
@@ -211,6 +211,35 @@
 				class="pure-button" style="width: 480px;">Download bootfriend.bin (raw splash data)</button>
 	</div>
 	<div class="pure-u-1-1">
+		<p><b>Installation:</b></p>
+		<ul>
+			<li><b>Different installation methods have separate guides. Please scroll down until the correct one is found.</b></li>
+			<li>The guide will often refer to &quot;XMODEM file transfer&quot;. This is a guide on how to perform an XMODEM file transfer:
+				<ul>
+					<li>On Windows, you may use <a href="https://osdn.net/projects/ttssh2/releases/">Tera Term</a> to initiate an XMODEM file transfer:
+					<ol>
+						<li>Setup -> Serial Port... -> select Port, Speed; set Data: 8 bit, Parity: none, Stop bits: 1 bit, Flow control: none.</li>
+						<li>File -> Transfer -> XMODEM -> Send...</li>
+					</ol>
+					</li>
+					<li>On Linux, you may use minicom in a terminal prompt to initiate an XMODEM file transfer:
+					<ol>
+						<li>Run &quot;minicom -D [device]&quot;; for ExtFriend, the device will typically be /dev/ttyACM0.</li>
+						<li>Press Ctrl+A, then O, then select &quot;Serial port setup&quot;:
+						<ul>
+							<li>Set &quot;Bps/Par/Bits&quot; to the correct speed, then press Q to set 8N1.</li>
+							<li>Set Hardware and Software Flow Control to &quot;No&quot;.</li>
+						</ul>
+						</li>
+						<li>Press Ctrl+A, then S, then select &quot;xmodem&quot;.</li>
+					</ol>
+					</li>
+					<li>Note that BootFriend uses a <b>38400 bps</b> serial port speed by default.</li>
+				</ul>
+			</li>
+		</ul>
+	</div>
+	<div class="pure-u-1-1">
 		<p><b>Installation Guide (Cartridge):</b></p>
 		<ol>
 			<li>Flash <b>bootfriend-inst.wsc</b> to the cartridge.
@@ -224,7 +253,8 @@
 				<li>The <b>Test BootFriend</b> option allows you to test the program serial port loader without installing the splash screen. This is useful for ensuring that your serial port adapter will work with the firmware.</li>
 				<li>The <b>Disable/Enable custom splash</b> option allows you to disable a custom splash (to fix console freezes/hangs related to them) or enable one.
 				<ul>
-					<li>Note that, on SwanCrystal, there is a factory custom splash screen, which is slightly different from the built-in one. The built-in splash screen is identical to the WonderSwan Color.</li>
+					<li>Note that, on SwanCrystal, there is a factory-installed custom splash screen on the IEEPROM, which is slightly different from the built-in one. The built-in splash screen is identical to the WonderSwan Color.</li>
+					<li>If BootFriend is installed, the option is named <b>Disable/Enable BootFriend</b> instead - as BootFriend is a modified custom splash, disabling the custom splash also disables BootFriend's functionality.</li>
 				</ul>
 				</li>
 				<li>The <b>SwanCrystal TFT recovery</b> option allows you to fix missing TFT configuration data, as explained above.</li>
@@ -255,16 +285,27 @@
 				<li>Select <b>Recv System</b> and upload the <b>bootfriend-inst-wwsystem.bin</b> file.</li>
 			</ul>
 			</li>
-			<li>Follow instruction steps 2-4 from the &quot;Cartridge&quot; installation guide.</li>
+			<li>Follow instruction steps 2-4 from the &quot;Cartridge&quot; installation guide.
+			<ul>
+				<li><b>Using the WonderWitch method, the original IEEPROM contents are not saved to SRAM!</b> Please use the XMODEM backup method instead.</li>
+				<li>Using the WonderWitch method, it is not always possible to &quot;unbrick&quot; a WonderSwan with damaged IEEPROM contents. This is a limitation of the method and cannot be fixed. (Note that the &quot;SwanCrystal TFT recovery&quot; function should work correctly.)</li>
+			</ul>
+			</li>
 			<li>Launch <b>Freya Monitor</b> again, and use <b>Recv System</b> with a copy of FreyaOS to restore the original operating system.</li>
 		</ol>
 		<p>A &quot;.fx&quot; version of the installer may be provided in the future.</p>
 	</div>
 	<div class="pure-u-1-1">
 		<h2>Changelog</h2>
+		<p><b>BootFriend v01 (installer v03) (2023-02-18)</b></p>
+		<ul>
+			<li>[BootFriend] Minor bugfixes and size optimizations.</li>
+			<li>[Installer] Added support for IEEPROM custom splash backup/restore via XMODEM.</li>
+			<li>[Installer] Added support for IEEPROM custom splash restore via SRAM (&quot;Cartridge&quot; method only).</li>
+		</ul>
 		<p><b>BootFriend v00 (installer v02) (2023-02-17)</b></p>
 		<ul>
-			<li>Corrected issue in &quot;SwanCrystal TFT recovery&quot; option handling.</li>
+			<li>[Installer] Corrected issue in &quot;SwanCrystal TFT recovery&quot; option handling.</li>
 		</ul>
 		<p><b>BootFriend v00 (installer v01) (2023-02-16)</b></p>
 		<ul>
@@ -276,29 +317,7 @@
 		<ul>
 			<li>To run a .bfb program (see the &quot;Additional software&quot; section below), perform the following steps:
 			<ol>
-				<li>Initiate an XMODEM file transfer on the PC side. This has to be done first.
-				<ul>
-					<li>Note that BootFriend uses a <b>38400 bps</b> serial port speed by default.</li>
-					<li>On Windows, you may use <a href="https://osdn.net/projects/ttssh2/releases/">Tera Term</a> to initiate an XMODEM file transfer:
-					<ol>
-						<li>Setup -> Serial Port... -> select Port, Speed; set Data: 8 bit, Parity: none, Stop bits: 1 bit, Flow control: none.</li>
-						<li>File -> Transfer -> XMODEM -> Send...</li>
-					</ol>
-					</li>
-					<li>On Linux, you may use minicom in a terminal prompt to initiate an XMODEM file transfer:
-					<ol>
-						<li>Run &quot;minicom -D [device]&quot;; for ExtFriend, the device will typically be /dev/ttyACM0.</li>
-						<li>Press Ctrl+A, then O, then select &quot;Serial port setup&quot;:
-						<ul>
-							<li>Set &quot;Bps/Par/Bits&quot; to the correct speed, then press Q to set 8N1.</li>
-							<li>Set Hardware and Software Flow Control to &quot;No&quot;.</li>
-						</ul>
-						</li>
-						<li>Press Ctrl+A, then S, then select &quot;xmodem&quot;.</li>
-					</ol>
-					</li>
-				</ul>
-				</li>
+				<li>Initiate an XMODEM file transfer on the PC side. This has to be done first.</li>
 				<li>Turn on the BootFriend-enabled WonderSwan console.</li>
 				<li>If done correctly, the PC should notify that a transfer has started, while the WonderSwan's screen should populate with dots.
 				<ul>
@@ -354,7 +373,7 @@
 	</div>
 </div>
 
-<script type="text/javascript" src="index.js?1676623186"></script>
-<script type="text/javascript" src="resources.js?1676623186"></script>
+<script type="text/javascript" src="index.js?1676623187"></script>
+<script type="text/javascript" src="resources.js?1676623187"></script>
 </body>
 </html>
