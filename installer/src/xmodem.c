@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <wonderful.h>
 #include <ws.h>
+#include "input.h"
 #include "xmodem.h"
 
 #define SOH 1
@@ -38,9 +39,8 @@
 static uint8_t xmodem_idx;
 
 bool xmodem_poll_exit(void) {
-	//input_update();
-	//return (input_pressed & KEY_B);
 	return false;
+	// return ((input_keys | input_pressed) & KEY_B);
 }
 
 void xmodem_open(uint8_t baudrate) {
@@ -49,6 +49,7 @@ void xmodem_open(uint8_t baudrate) {
 }
 
 void xmodem_close(void) {
+        while (!ws_serial_is_writable()) { } 
 	ws_serial_close();
 }
 
@@ -83,8 +84,9 @@ static void xmodem_write_block(const uint8_t __far* block) {
 
 	uint8_t checksum = 0;
 	for (uint16_t i = 0; i < XMODEM_BLOCK_SIZE; i++) {
-		ws_serial_putc(block[i]);
-		checksum += block[i];
+		uint8_t v = block[i];
+		ws_serial_putc(v);
+		checksum += v;
 	}
 
 	ws_serial_putc(checksum);
@@ -93,7 +95,7 @@ static void xmodem_write_block(const uint8_t __far* block) {
 uint8_t xmodem_recv_start(void) {
 	xmodem_idx = 1;
 	ws_serial_putc(NAK);
-	
+
 	return XMODEM_OK;
 }
 
@@ -104,7 +106,7 @@ uint8_t xmodem_recv_block(uint8_t __far* block) {
 		if ((retries--) == 0) return XMODEM_ERROR;
 		if (xmodem_poll_exit()) return XMODEM_SELF_CANCEL;
 
-		int16_t r = ws_serial_getc_nonblock();
+		int16_t r = ws_serial_getc();
 		if (r >= 0) {
 			if (r == CAN) {
 				return XMODEM_CANCEL;
@@ -127,8 +129,8 @@ uint8_t xmodem_recv_block(uint8_t __far* block) {
 			}
 		}
 
-		ws_hwint_enable(HWINT_SERIAL_RX);
-		cpu_halt();
+		/* ws_hwint_enable(HWINT_SERIAL_RX);
+		cpu_halt(); */
 	}
 }
 
@@ -140,9 +142,13 @@ void xmodem_recv_ack(void) {
 uint8_t xmodem_send_start(void) {
 	xmodem_idx = 1;
 
+	cpu_irq_disable();
+        ws_hwint_enable(HWINT_SERIAL_RX);
+
 	while (!xmodem_poll_exit()) {
 		int16_t r = ws_serial_getc_nonblock();
 		if (r >= 0) {
+		        ws_hwint_disable(HWINT_SERIAL_RX);
 			if (r == CAN) {
 				return XMODEM_CANCEL;
 			} else if (r == NAK) {
@@ -150,8 +156,7 @@ uint8_t xmodem_send_start(void) {
 			}
 		}
 
-		ws_hwint_enable(HWINT_SERIAL_RX);
-		cpu_halt();
+		__asm volatile ("sti\nhlt\ncli");
 	}
 	return XMODEM_SELF_CANCEL;
 }
@@ -175,8 +180,6 @@ WriteAgain:
 			}
 		}
 
-		ws_hwint_enable(HWINT_SERIAL_RX);
-		cpu_halt();
 	}
 	return XMODEM_SELF_CANCEL;
 }
@@ -198,9 +201,6 @@ WriteAgain:
 				return XMODEM_OK;
 			}
 		}
-
-		ws_hwint_enable(HWINT_SERIAL_RX);
-		cpu_halt();
 	}
 	return XMODEM_SELF_CANCEL;
 }

@@ -24,9 +24,7 @@
 #include "nanoprintf.h"
 #include "ui.h"
 #include "util.h"
-#include "wonderful-asm-common.h"
-#include "ws/display.h"
-#include "ws/eeprom.h"
+#include "xmodem.h"
 
 #ifndef TARGET_WWITCH
 volatile uint16_t vbl_ticks;
@@ -41,7 +39,7 @@ void vblank_int_handler(void) {
 
 // Must be 24 chars
 //                                      1234567890123456789012345678
-static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui02";
+static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui03";
 static const char IN_ROM bfi_eeprom_locked[] = "EEP locked";
 static const char IN_ROM bfi_eeprom_unlocked[] = "EEP unlocked";
 static const char IN_ROM bfi_no_splash[] = "no splash";
@@ -52,6 +50,22 @@ static const char IN_ROM bfi_bf_found[] = "BF v.%02X";
 ws_boot_splash_header_t boot_header_data;
 static bool boot_header_update_required;
 static bool boot_header_splash_valid;
+
+bool is_ww_mode(void) {
+	uint8_t __far* freya_bios_header = (uint8_t __far*) MK_FP(0xF000, 0x0000);
+	if (freya_bios_header[0] == 'E'
+		&& freya_bios_header[1] == 'L'
+		&& freya_bios_header[2] == 'I'
+		&& freya_bios_header[3] == 'S'
+		&& freya_bios_header[4] == 'A') {
+		return true;
+	}
+	return false;
+}
+
+bool wait_for_keypress(void) {
+	input_wait_clear(); while (input_pressed == 0) { wait_for_vblank(); input_update(); } input_wait_clear();
+}
 
 void boot_header_mark_changed(void) {
 	boot_header_update_required = true;
@@ -164,8 +178,9 @@ static const char IN_ROM msg_verifying_eeprom_data[] =  "Verifying IEEPROM data.
 static const char IN_ROM msg_backing_up_eeprom[] = "Backing up IEEPROM...";
 static const char IN_ROM msg_verify_error[] =  "Verify error @ %03X";
 static const char IN_ROM msg_do_not_turn_off[] = "Do not turn off the console!";
+static const char IN_ROM msg_none[] = "";
 
-static void install_bootfriend(void) {
+static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
 
 	ui_puts(1, 3, COLOR_BLACK, msg_installing_eeprom_data);
@@ -182,15 +197,15 @@ static void install_bootfriend(void) {
 
 	// Write BootFriend data; skip sensitive/user-configurable areas
 	/* uint16_t word_0x84 = ws_eeprom_read_word(ieep_handle, 0x84);
-	word_0x84 = (word_0x84 & 0xFF) | (_bootfriend_bin[5] << 8);
+	word_0x84 = (word_0x84 & 0xFF) | (data[5] << 8);
 	ws_eeprom_write_word(ieep_handle, 0x84, word_0x84); */
 
-	uint16_t steps_per_progress = (_bootfriend_bin_size - /* 6 */ 4) / (26 * 2);
+	uint16_t steps_per_progress = (data_size - /* 6 */ 4) / (26 * 2);
 	uint8_t step_counter = 0;
 	uint16_t step_counter_min = 0;
 
-	for (uint16_t i = /* 0x06 */ 0x04; i < _bootfriend_bin_size; i += 2) {
-		uint16_t w = _bootfriend_bin[i] | (_bootfriend_bin[i + 1] << 8);
+	for (uint16_t i = /* 0x06 */ 0x04; i < data_size; i += 2) {
+		uint16_t w = data[i] | (data[i + 1] << 8);
 		if (i == 4 && (w & 0xFF) == 'p') w = w & 0xFF00;
 		uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 		// skip SwanCrystal data block
@@ -213,8 +228,8 @@ static void install_bootfriend(void) {
 	step_counter = 0;
 	step_counter_min = 0;
 
-	for (uint16_t i = 0x06; i < _bootfriend_bin_size; i += 2) {
-		uint16_t w = _bootfriend_bin[i] | (_bootfriend_bin[i + 1] << 8);
+	for (uint16_t i = 0x06; i < data_size; i += 2) {
+		uint16_t w = data[i] | (data[i + 1] << 8);
 		// skip SwanCrystal data block
 		if (!(i >= 0x2C && i < 0x38)) {
 			uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
@@ -223,11 +238,7 @@ static void install_bootfriend(void) {
 				
 				ui_printf(1, 15, COLOR_RED, msg_verify_error, i);
 				cpu_irq_enable();
-				input_wait_clear();
-				while (input_pressed == 0) {
-					wait_for_vblank(); input_update();
-				}
-				input_wait_clear();
+				wait_for_keypress();
 
 				goto EndInstall;
 				return;
@@ -300,6 +311,9 @@ static const char IN_ROM msg_enable_splash[] = "Enable custom splash";
 static const char IN_ROM msg_disable_bf[] = "Disable BootFriend";
 static const char IN_ROM msg_enable_bf[] = "Enable BootFriend";
 static const char IN_ROM msg_recover_swancrystal[] = "SwanCrystal TFT recovery";
+static const char IN_ROM msg_restore_sram_backup[] = "Restore IEEPROM (SRAM)";
+static const char IN_ROM msg_restore_xmodem_backup[] = "Restore IEEPROM (XMODEM)";
+static const char IN_ROM msg_backup_xmodem[] = "Backup IEEPROM (XMODEM)";
 
 uint8_t menu_show_main(void) {
 	boot_header_refresh();
@@ -309,8 +323,10 @@ uint8_t menu_show_main(void) {
 	ws_boot_splash_header_t __far* provided_header = (ws_boot_splash_header_t __far*) _bootfriend_bin;
 	bool provided_splash_bf = provided_header->pad5 == 'b' && provided_header->pad6 == 'F';
 
+	ws_boot_splash_header_t __far* sram_header = (ws_boot_splash_header_t __far*) MK_FP(0x1000, 0x0080);
+	bool sram_splash_valid = ws_boot_splash_is_header_valid(sram_header);
 
-	menu_entry_t entries[4];
+	menu_entry_t entries[8];
 	uint8_t entry_count = 0;
 
 	entries[entry_count].text = msg_test_bootfriend;
@@ -325,39 +341,164 @@ uint8_t menu_show_main(void) {
 	entries[entry_count++].flags = (ws_ieep_protect_check() || (!splash_active && !boot_header_splash_valid)) ? MENU_ENTRY_DISABLED : 0;
 	entries[entry_count].text = msg_recover_swancrystal;
 	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0; 
+	entries[entry_count].text = msg_none;
+	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
+	entries[entry_count].text = msg_backup_xmodem;
+	entries[entry_count++].flags = 0;
+	entries[entry_count].text = msg_restore_xmodem_backup;
+	entries[entry_count++].flags = 0;
+	entries[entry_count].text = msg_restore_sram_backup;
+#ifdef TARGET_WWITCH
+	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
+#else
+	entries[entry_count++].flags = sram_splash_valid ? 0 : MENU_ENTRY_DISABLED;
+#endif
 
 	ui_menu_run(entries, entry_count, 3 + ((14 - entry_count) >> 1));
 }
 
 static const char IN_ROM msg_backup_check[] = "Would you like to backup your internal EEPROM to cartridge save RAM first?";
+static const char IN_ROM msg_xmodem_backup_check[] = "Would you like to backup your internal EEPROM via XMODEM transfer first?";
+void xmodem_backup(void);
 
 void do_backup_check(void) {
 #ifndef TARGET_WWITCH
-	// Check if we're not running on WonderWitch
-	uint8_t __far* freya_bios_header = (uint8_t __far*) MK_FP(0xF000, 0x0000);
-	if (freya_bios_header[0] == 'E'
-		&& freya_bios_header[1] == 'L'
-		&& freya_bios_header[2] == 'I'
-		&& freya_bios_header[3] == 'S'
-		&& freya_bios_header[4] == 'A') {
-		return;
-	}
-
 	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
 	ws_boot_splash_header_t __far* provided_header = (ws_boot_splash_header_t __far*) MK_FP(0x1000, 0x0080);
 
 	input_wait_clear();
 
-	if (!ws_boot_splash_is_header_valid(provided_header) && menu_confirm(msg_backup_check, 6, false, true)) {
-		ui_clear_lines(3, 17);
-		ui_puts(1, 3, COLOR_BLACK, msg_backing_up_eeprom);
-		uint16_t __far *sram_ptr = (uint16_t __far*) MK_FP(0x1000, 0x0000);
-		for (uint16_t i = 0; i < 2048; i += 2) {
-			*(sram_ptr++) = ws_eeprom_read_word(ieep_handle, i);
+	if (is_ww_mode()) {
+		if (menu_confirm(msg_xmodem_backup_check, 5, false, true)) xmodem_backup();
+	} else {
+		if (!ws_boot_splash_is_header_valid(provided_header) && menu_confirm(msg_backup_check, 5, false, true)) {
+			ui_clear_lines(3, 17);
+			ui_puts(1, 3, COLOR_BLACK, msg_backing_up_eeprom);
+			uint16_t __far *sram_ptr = (uint16_t __far*) MK_FP(0x1000, 0x0000);
+			for (uint16_t i = 0; i < 2048; i += 2) {
+				*(sram_ptr++) = ws_eeprom_read_word(ieep_handle, i);
+			}
+			ui_clear_lines(3, 3);
 		}
-		ui_clear_lines(3, 3);
 	}
 #endif
+}
+
+static const char IN_ROM msg_xmodem_init[] = "Initializing XMODEM transfer";
+static const char IN_ROM msg_xmodem_progress[] = "Transferring data";
+static const char IN_ROM msg_erase_progress[] = "Erasing data";
+static const char IN_ROM msg_xmodem_transfer_error[] = "Transfer error";
+static const char IN_ROM msg_restore_invalid_size[] = "Invalid file size";
+static const char IN_ROM msg_restore_invalid_contents[] = "Invalid file contents";
+
+static void xmodem_status(const char __far *str) {
+        ui_clear_lines(6, 6);
+        ui_puts_centered(6, COLOR_BLACK, str);
+}
+
+void xmodem_backup(void) {
+	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
+	uint8_t xm_buffer[2048];
+
+	ui_clear_lines(3, 17);
+	for (uint16_t ip = 0; ip < 2048; ip += 2) {
+		*((uint16_t*) (xm_buffer + ip)) = ws_eeprom_read_word(ieep_handle, ip);
+	}
+	xmodem_status(msg_xmodem_init);
+	xmodem_open(SERIAL_BAUD_38400);
+
+        if (xmodem_send_start() == XMODEM_OK) {
+                cpu_irq_disable();
+                xmodem_status(msg_xmodem_progress);
+                for (uint16_t ib = 0; ib < 16; ib++) {
+                        uint8_t result = xmodem_send_block(xm_buffer + (ib << 7));
+                        switch (result) {
+                        case XMODEM_OK:
+                               break;
+                        case XMODEM_ERROR:
+                               xmodem_status(msg_xmodem_transfer_error);
+                               ws_hwint_ack(0xFF);
+                               cpu_irq_enable();
+				wait_for_keypress();
+                        case XMODEM_SELF_CANCEL:
+                        case XMODEM_CANCEL:
+                               goto End;
+                        }
+                }
+                xmodem_send_finish();
+        }
+End:
+        ws_hwint_ack(0xFF);
+        cpu_irq_enable();
+        xmodem_close();
+        ui_clear_lines(3, 17);
+}
+
+void xmodem_restore(void) {
+	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
+	uint8_t xm_buffer[2048];
+	uint16_t xm_position = 0;
+
+	ui_clear_lines(3, 17);
+	xmodem_open(SERIAL_BAUD_38400);
+
+        cpu_irq_disable();
+        xmodem_status(msg_xmodem_progress);
+        {
+                xmodem_recv_start();
+                for (uint16_t ib = 0; ib < 16; ib++) {
+                        uint8_t result = xmodem_recv_block(xm_buffer + xm_position);
+			xm_position += 128;
+                        xmodem_recv_ack();
+                        switch (result) {
+                        case XMODEM_OK:
+                               break;
+			case XMODEM_COMPLETE:
+				goto End;
+                        case XMODEM_ERROR:
+                               xm_position = 0;
+                               xmodem_status(msg_xmodem_transfer_error);
+                               ws_hwint_ack(0xFF);
+                               cpu_irq_enable();
+				wait_for_keypress();
+				ui_clear_lines(3, 17);
+				return;
+                        case XMODEM_SELF_CANCEL:
+                        case XMODEM_CANCEL:
+                               ws_hwint_ack(0xFF);
+                               cpu_irq_enable();
+				ui_clear_lines(3, 17);
+				return;
+                        }
+                }
+        }
+
+End:
+        ws_hwint_ack(0xFF);
+        cpu_irq_enable();
+        xmodem_close();
+        ui_clear_lines(3, 17);
+
+        // verify and install
+	uint8_t *data_ptr = xm_buffer;
+	uint16_t data_size = 1920;
+	if (xm_position == 2048) {
+		data_ptr += 0x80;
+	} else if (xm_position > 1920) {
+		xmodem_status(msg_restore_invalid_size);
+		wait_for_keypress();
+		return;
+	} else {
+		data_size = xm_position;
+	}
+
+	if (!ws_boot_splash_is_header_valid(data_ptr)) {
+		xmodem_status(msg_restore_invalid_contents);
+		wait_for_keypress();
+		return;
+	}
+
+	install_bootfriend(data_ptr, data_size);
 }
 
 void menu_main(void) {
@@ -371,7 +512,7 @@ void menu_main(void) {
 	case 1: // Install BootFriend
 		if (menu_confirm(msg_are_you_sure_install, 6, false, false)) {
 			do_backup_check();
-			install_bootfriend();
+			install_bootfriend(_bootfriend_bin, _bootfriend_bin_size);
 		}
 		break;
 	case 2: // Disable/Enable boot splash
@@ -379,6 +520,19 @@ void menu_main(void) {
 		break;
 	case 3: // SwanCrystal recovery
 		if (menu_confirm(msg_are_you_sure_recovery, 9, false, false)) recovery_swancrystal();
+		break;
+	case 5: // XMODEM backup
+		xmodem_backup();
+		break;
+	case 6: // XMODEM backup
+		if (menu_confirm(msg_are_you_sure, 1, true, false)) {
+			xmodem_restore();
+		}
+		break;
+	case 7: // SRAM restore
+		if (menu_confirm(msg_are_you_sure, 1, true, false)) {
+			install_bootfriend(MK_FP(0x1000, 0x0080), 2048 - 0x80);
+		}
 		break;
 	}
 }

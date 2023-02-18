@@ -51,7 +51,7 @@ org 0x0000
 	db 'M' ; Console flags
 	db 'p' ; Console name color
 bootFriendVersion:
-	db 0 ; Padding (BootFriend version)
+	db 0x01 ; Padding (BootFriend version)
 	db 1 ; Size
 	db 0x20 ; Start frame
 	db 0x80 ; End frame
