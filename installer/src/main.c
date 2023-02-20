@@ -17,6 +17,10 @@
 
 #include <stdbool.h>
 #include <ws.h>
+#ifdef TARGET_WWITCH
+#include <sys/bios.h>
+#endif
+
 #include "bootfriend.h"
 #include "boot_splash.h"
 #include "font_default.h"
@@ -186,7 +190,9 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	ui_puts(1, 3, COLOR_BLACK, msg_installing_eeprom_data);
 	ui_puts(0, 5, COLOR_RED, msg_do_not_turn_off);
 
+#ifndef TARGET_WWITCH
 	cpu_irq_disable();
+#endif
 
 	// Disable the custom splash, if enabled.
 	uint16_t word_0x82 = ws_eeprom_read_word(ieep_handle, 0x82);
@@ -207,14 +213,14 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	for (uint16_t i = /* 0x06 */ 0x04; i < data_size; i += 2) {
 		uint16_t w = data[i] | (data[i + 1] << 8);
 		if (i == 4 && (w & 0xFF) == 'p') w = w & 0xFF00;
-		uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 		// skip SwanCrystal data block
 		if (!(i >= 0x2C && i < 0x38)) {
+			uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 			if (w != w2) {
 				ws_eeprom_write_word(ieep_handle, i + 0x80, w);
 			}
 		}
-		
+
 		if (step_counter < 26 && (++step_counter_min) == steps_per_progress) {
 			SCREEN1[1 + (step_counter++) + (15 << 5)] = SCR_ENTRY_PALETTE(COLOR_SELECTED);
 			step_counter_min = 0;
@@ -235,16 +241,17 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 			uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 			if (w != w2) {
 				ui_clear_lines(15, 15);
-				
+
 				ui_printf(1, 15, COLOR_RED, msg_verify_error, i);
+#ifndef TARGET_WWITCH
 				cpu_irq_enable();
+#endif
 				wait_for_keypress();
 
 				goto EndInstall;
-				return;
 			}
 		}
-		
+
 		if (step_counter < 26 && (++step_counter_min) == steps_per_progress) {
 			SCREEN1[1 + (step_counter++) + (15 << 5)] = SCR_ENTRY_PALETTE(COLOR_SELECTED);
 			step_counter_min = 0;
@@ -255,8 +262,11 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	word_0x82 |= (IEEP_C_OPTIONS1_CUSTOM_SPLASH << 8);
 	ws_eeprom_write_word(ieep_handle, 0x82, word_0x82);
 	
+
 EndInstall:
+#ifndef TARGET_WWITCH
 	cpu_irq_enable();
+#endif
 	ui_clear_lines(3, 16);
 
 	boot_header_mark_changed();
@@ -311,9 +321,13 @@ static const char IN_ROM msg_enable_splash[] = "Enable custom splash";
 static const char IN_ROM msg_disable_bf[] = "Disable BootFriend";
 static const char IN_ROM msg_enable_bf[] = "Enable BootFriend";
 static const char IN_ROM msg_recover_swancrystal[] = "SwanCrystal TFT recovery";
-static const char IN_ROM msg_restore_sram_backup[] = "Restore IEEPROM (SRAM)";
 static const char IN_ROM msg_restore_xmodem_backup[] = "Restore IEEPROM (XMODEM)";
 static const char IN_ROM msg_backup_xmodem[] = "Backup IEEPROM (XMODEM)";
+#ifdef TARGET_WWITCH
+static const char IN_ROM msg_exit[] = "Exit";
+#else
+static const char IN_ROM msg_restore_sram_backup[] = "Restore IEEPROM (SRAM)";
+#endif
 
 uint8_t menu_show_main(void) {
 	boot_header_refresh();
@@ -336,25 +350,28 @@ uint8_t menu_show_main(void) {
 	entries[entry_count++].flags = provided_splash_bf ? 0 : MENU_ENTRY_DISABLED;
 #endif
 	entries[entry_count].text = provided_splash_bf ? msg_install_bootfriend : msg_install_splash;
-	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0; 
+	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0;
 	entries[entry_count].text = splash_active ? (splash_bf ? msg_disable_bf : msg_disable_splash) : (splash_bf ? msg_enable_bf : msg_enable_splash);
 	entries[entry_count++].flags = (ws_ieep_protect_check() || (!splash_active && !boot_header_splash_valid)) ? MENU_ENTRY_DISABLED : 0;
 	entries[entry_count].text = msg_recover_swancrystal;
-	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0; 
+	entries[entry_count++].flags = ws_ieep_protect_check() ? MENU_ENTRY_DISABLED : 0;
 	entries[entry_count].text = msg_none;
 	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
 	entries[entry_count].text = msg_backup_xmodem;
 	entries[entry_count++].flags = 0;
 	entries[entry_count].text = msg_restore_xmodem_backup;
 	entries[entry_count++].flags = 0;
-	entries[entry_count].text = msg_restore_sram_backup;
 #ifdef TARGET_WWITCH
-	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
+	entries[entry_count].text = msg_exit;
+	entries[entry_count++].flags = 0;
 #else
+	entries[entry_count].text = msg_restore_sram_backup;
 	entries[entry_count++].flags = sram_splash_valid ? 0 : MENU_ENTRY_DISABLED;
 #endif
 
-	ui_menu_run(entries, entry_count, 3 + ((14 - entry_count) >> 1));
+	uint8_t result = ui_menu_run(entries, entry_count, 3 + ((14 - entry_count) >> 1));
+        ui_puts(0, 0, COLOR_RED, msg_none); // TODO: compiler error workaround
+	return result;
 }
 
 static const char IN_ROM msg_backup_check[] = "Would you like to backup your internal EEPROM to cartridge save RAM first?";
@@ -408,7 +425,9 @@ void xmodem_backup(void) {
 	xmodem_open(SERIAL_BAUD_38400);
 
         if (xmodem_send_start() == XMODEM_OK) {
+#ifndef TARGET_WWITCH
                 cpu_irq_disable();
+#endif
                 xmodem_status(msg_xmodem_progress);
                 for (uint16_t ib = 0; ib < 16; ib++) {
                         uint8_t result = xmodem_send_block(xm_buffer + (ib << 7));
@@ -417,8 +436,10 @@ void xmodem_backup(void) {
                                break;
                         case XMODEM_ERROR:
                                xmodem_status(msg_xmodem_transfer_error);
+#ifndef TARGET_WWITCH
                                ws_hwint_ack(0xFF);
                                cpu_irq_enable();
+#endif
 				wait_for_keypress();
                         case XMODEM_SELF_CANCEL:
                         case XMODEM_CANCEL:
@@ -428,8 +449,10 @@ void xmodem_backup(void) {
                 xmodem_send_finish();
         }
 End:
+#ifndef TARGET_WWITCH
         ws_hwint_ack(0xFF);
         cpu_irq_enable();
+#endif
         xmodem_close();
         ui_clear_lines(3, 17);
 }
@@ -442,7 +465,9 @@ void xmodem_restore(void) {
 	ui_clear_lines(3, 17);
 	xmodem_open(SERIAL_BAUD_38400);
 
+#ifndef TARGET_WWITCH
         cpu_irq_disable();
+#endif
         xmodem_status(msg_xmodem_progress);
         {
                 xmodem_recv_start();
@@ -458,15 +483,19 @@ void xmodem_restore(void) {
                         case XMODEM_ERROR:
                                xm_position = 0;
                                xmodem_status(msg_xmodem_transfer_error);
+#ifndef TARGET_WWITCH
                                ws_hwint_ack(0xFF);
                                cpu_irq_enable();
+#endif
 				wait_for_keypress();
 				ui_clear_lines(3, 17);
 				return;
                         case XMODEM_SELF_CANCEL:
                         case XMODEM_CANCEL:
+#ifndef TARGET_WWITCH
                                ws_hwint_ack(0xFF);
                                cpu_irq_enable();
+#endif
 				ui_clear_lines(3, 17);
 				return;
                         }
@@ -474,13 +503,15 @@ void xmodem_restore(void) {
         }
 
 End:
+#ifndef TARGET_WWITCH
         ws_hwint_ack(0xFF);
         cpu_irq_enable();
+#endif
         xmodem_close();
         ui_clear_lines(3, 17);
 
         // verify and install
-	uint8_t *data_ptr = xm_buffer;
+	uint8_t __far* data_ptr = xm_buffer;
 	uint16_t data_size = 1920;
 	if (xm_position == 2048) {
 		data_ptr += 0x80;
@@ -529,11 +560,17 @@ void menu_main(void) {
 			xmodem_restore();
 		}
 		break;
+#ifdef TARGET_WWITCH
+	case 7: // Exit
+		bios_exit();
+		break;
+#else
 	case 7: // SRAM restore
 		if (menu_confirm(msg_are_you_sure, 1, true, false)) {
 			install_bootfriend(MK_FP(0x1000, 0x0080), 2048 - 0x80);
 		}
 		break;
+#endif
 	}
 }
 

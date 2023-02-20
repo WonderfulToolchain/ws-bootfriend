@@ -15,9 +15,10 @@
  * with BootFriend. If not, see <https://www.gnu.org/licenses/>. 
  */
 
-#include <ws.h>
 #ifdef TARGET_WWITCH
 #include <sys/bios.h>
+#else
+#include <ws.h>
 #endif
 #include "util.h"
 

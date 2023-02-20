@@ -26,8 +26,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <wonderful.h>
+#ifdef TARGET_WWITCH
+#include <sys/bios.h>
+#else
 #include <ws.h>
-#include "input.h"
+#endif
 #include "xmodem.h"
 
 #define SOH 1
@@ -44,14 +47,28 @@ bool xmodem_poll_exit(void) {
 }
 
 void xmodem_open(uint8_t baudrate) {
+#ifdef TARGET_WWITCH
+	comm_set_baudrate(baudrate ? COMM_SPEED_38400 : COMM_SPEED_9600);
+	comm_open();
+#else
 	ws_serial_open(baudrate);
 	ws_hwint_set_default_handler_serial_rx();
+#endif
 }
 
 void xmodem_close(void) {
-        while (!ws_serial_is_writable()) { } 
+#ifdef TARGET_WWITCH
+	comm_close();
+#else
+        while (!ws_serial_is_writable()) { }
 	ws_serial_close();
+#endif
 }
+
+#ifdef TARGET_WWITCH
+#define ws_serial_getc comm_receive_char
+#define ws_serial_putc comm_send_char
+#endif
 
 // call after SOH
 static uint8_t xmodem_read_block(uint8_t __far* block) {
@@ -142,21 +159,30 @@ void xmodem_recv_ack(void) {
 uint8_t xmodem_send_start(void) {
 	xmodem_idx = 1;
 
+#ifndef TARGET_WWITCH
 	cpu_irq_disable();
         ws_hwint_enable(HWINT_SERIAL_RX);
+#endif
 
 	while (!xmodem_poll_exit()) {
+#ifdef TARGET_WWITCH
+		int16_t r = comm_receive_char();
+#else
 		int16_t r = ws_serial_getc_nonblock();
+#endif
 		if (r >= 0) {
+#ifndef TARGET_WWITCH
 		        ws_hwint_disable(HWINT_SERIAL_RX);
+#endif
 			if (r == CAN) {
 				return XMODEM_CANCEL;
 			} else if (r == NAK) {
 				return XMODEM_OK;
 			}
 		}
-
+#ifndef TARGET_WWITCH
 		__asm volatile ("sti\nhlt\ncli");
+#endif
 	}
 	return XMODEM_SELF_CANCEL;
 }
@@ -168,7 +194,7 @@ WriteAgain:
 	xmodem_write_block(block);
 
 	while (!xmodem_poll_exit()) {
-		int16_t r = ws_serial_getc_nonblock();
+		int16_t r = ws_serial_getc();
 		if (r >= 0) {
 			if (r == CAN) {
 				return XMODEM_CANCEL;
@@ -191,7 +217,7 @@ WriteAgain:
 	ws_serial_putc(EOT);
 
 	while (!xmodem_poll_exit()) {
-		int16_t r = ws_serial_getc_nonblock();
+		int16_t r = ws_serial_getc();
 		if (r >= 0) {
 			if (r == CAN) {
 				return XMODEM_CANCEL;

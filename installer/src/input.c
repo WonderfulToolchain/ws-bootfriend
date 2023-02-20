@@ -29,6 +29,7 @@ void input_update(void) {
 
 void input_wait_clear(void) {
 	while (key_press_check() != 0) sys_wait(1);
+	input_pressed = 0;
 }
 #else
 #include <ws.h>
