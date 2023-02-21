@@ -17,10 +17,11 @@
 
 #include <stdbool.h>
 #include <string.h>
-#include <ws.h>
 #ifdef TARGET_WWITCH
+#include <sys/bios.h>
 #include <sys/libwwc.h>
 #endif
+#include <ws.h>
 #include "input.h"
 #include "ui.h"
 #include "font_default.h"
@@ -28,7 +29,11 @@
 #include "util.h"
 #include "ws/display.h"
 
-const char IN_ROM msg_wsc_only[] = "The BootFriend installer is compatible only with Wonder-Swan Color and SwanCrystal consoles! Shutting down.";
+#ifdef TARGET_WWITCH
+#define WWITCH_USE_BUILTIN_FONT
+#endif
+
+static const char IN_ROM msg_wsc_only[] = "The BootFriend installer is compatible only with Wonder-Swan Color and SwanCrystal consoles! Shutting down.";
 
 static bool ui_is_space(char c) {
     return c == 0 || c == '\n' || c == 32;
@@ -87,18 +92,30 @@ static inline void ui_palette_set_color(uint8_t idx, uint8_t sub_idx, uint16_t c
 #endif
 
 void ui_init(void) {
+#ifdef WWITCH_USE_BUILTIN_FONT
+    uint8_t buffer[8];
+    uint16_t __far* dst = (uint16_t __far*) MK_FP(0x0000, 0x2000);
+    for (int i = 0; i < 128; i++) {
+        text_get_fontdata(i, buffer);
+        for (int j = 0; j < 8; j++) {
+            *(dst++) = buffer[j];
+        }
+    }
+#else
     const uint8_t __far* src = _font_default_bin;
     uint16_t __far* dst = (uint16_t __far*) MK_FP(0x0000, 0x2000);
     for (int i = 0; i < _font_default_bin_size; i++) {
         *(dst++) = *(src++);
     }
+#endif
 
+#ifndef TARGET_WWITCH
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(0x20, 0x5270);
     outportb(IO_SCR_BASE, SCR1_BASE(0x1800));
     ui_clear_lines(0, 17);
     outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
-    
+
     if (!ws_system_is_color()) {
         // Halt on mono WS units
         ui_puts(0, ((18-4)/2)-1, 0, msg_wsc_only);
@@ -106,6 +123,9 @@ void ui_init(void) {
     }
 
     ws_mode_set(WS_MODE_COLOR);
+#else
+    wwc_set_color_mode(COLOR_MODE_4COLOR);
+#endif
 
     // set palettes
     ui_palette_set_color(COLOR_BLACK, 0, 0x0FFF);
