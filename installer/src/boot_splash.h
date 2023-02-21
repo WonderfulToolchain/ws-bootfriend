@@ -56,7 +56,9 @@ typedef struct __attribute__((packed)) {
     uint16_t sound_wavetable_offset; // 22
     uint16_t sound_channel_offset[4]; // 24
     uint8_t swancrystal_init_data[10]; // 2C
-    // 36
+    uint8_t pad7[10]; // 36
+    uint8_t bootfriend_version; // 40 - 0x60 (PUSHA) means 0x00 for legacy reasons
+    uint8_t bootfriend_unused; // 41 - part of code
 } ws_boot_splash_header_t;
 
 typedef struct {

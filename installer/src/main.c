@@ -43,7 +43,7 @@ void vblank_int_handler(void) {
 
 // Must be 24 chars
 //                                      1234567890123456789012345678
-static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui03";
+static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui04";
 static const char IN_ROM bfi_eeprom_locked[] = "EEP locked";
 static const char IN_ROM bfi_eeprom_unlocked[] = "EEP unlocked";
 static const char IN_ROM bfi_no_splash[] = "no splash";
@@ -105,7 +105,9 @@ static void statusbar_update(void) {
 	} else if (splash_valid && !splash_bf) {
 		strcpy(buf, bfi_no_bf);
 	} else if (splash_valid && splash_bf) {
-		npf_snprintf(buf, sizeof(buf), bfi_bf_found, boot_header_data.pad4);
+		uint8_t bf_version = boot_header_data.bootfriend_version;
+		if (bf_version == 0x60) bf_version = 0x00;
+		npf_snprintf(buf, sizeof(buf), bfi_bf_found, bf_version);
 	} else {
 		buf[0] = '?'; buf[1] = 0;
 	}
@@ -173,6 +175,7 @@ static void test_bootfriend(void) {
 
 	// restore UI
 	ui_init();
+	statusbar_update();
 }
 #endif
 
@@ -202,19 +205,17 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	}
 
 	// Write BootFriend data; skip sensitive/user-configurable areas
-	/* uint16_t word_0x84 = ws_eeprom_read_word(ieep_handle, 0x84);
-	word_0x84 = (word_0x84 & 0xFF) | (data[5] << 8);
-	ws_eeprom_write_word(ieep_handle, 0x84, word_0x84); */
-
-	uint16_t steps_per_progress = (data_size - /* 6 */ 4) / (26 * 2);
+	uint16_t steps_per_progress = (data_size - 4) / (26 * 2);
 	uint8_t step_counter = 0;
 	uint16_t step_counter_min = 0;
 
-	for (uint16_t i = /* 0x06 */ 0x04; i < data_size; i += 2) {
-		uint16_t w = data[i] | (data[i + 1] << 8);
-		if (i == 4 && (w & 0xFF) == 'p') w = w & 0xFF00;
+	for (uint16_t i = 0x04; i < data_size; i += 2) {
+		// skip invalid colors
+		if (i == 4 && data[i] >= 0x10) continue;
+
 		// skip SwanCrystal data block
 		if (!(i >= 0x2C && i < 0x38)) {
+			uint16_t w = *((const uint16_t __far*) (data + i));
 			uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 			if (w != w2) {
 				ws_eeprom_write_word(ieep_handle, i + 0x80, w);
@@ -234,10 +235,13 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	step_counter = 0;
 	step_counter_min = 0;
 
-	for (uint16_t i = 0x06; i < data_size; i += 2) {
-		uint16_t w = data[i] | (data[i + 1] << 8);
+	for (uint16_t i = 0x04; i < data_size; i += 2) {
+		// skip invalid colors
+		if (i == 4 && data[i] >= 0x10) continue;
+
 		// skip SwanCrystal data block
 		if (!(i >= 0x2C && i < 0x38)) {
+			uint16_t w = *((const uint16_t __far*) (data + i));
 			uint16_t w2 = ws_eeprom_read_word(ieep_handle, i + 0x80);
 			if (w != w2) {
 				ui_clear_lines(15, 15);

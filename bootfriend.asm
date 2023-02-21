@@ -50,8 +50,7 @@ org 0x0000
 	db 'b', 'F', 't' Padding
 	db 'M' ; Console flags
 	db 'p' ; Console name color
-bootFriendVersion:
-	db 0x01 ; Padding (BootFriend version)
+	db 0 ; Padding (must be 0)
 	db 1 ; Size
 	db 0x20 ; Start frame
 	db 0x80 ; End frame
@@ -101,6 +100,9 @@ times 0x40-($-$$) db 0x00 ; Padding
 %define ACK 6
 %define NAK 21
 %define CAN 24
+
+bootFriendVersion:
+	db 0x02
 
 vblankHandler:
 	pusha
