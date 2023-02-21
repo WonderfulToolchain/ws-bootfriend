@@ -11,7 +11,7 @@ CFLAGS += -Os -DTARGET_WWITCH -ffunction-sections
 LDFLAGS += --gc-sections --print-gc-sections
 TARGET := bootfriend_inst.fx
 TARGET_NAME := bootfriend_inst
-TARGET_INFO := BootFriend Inst
+TARGET_INFO := BootFrndInst
 
 WF_CRT0 := $(WF_CRT0_JPN1)
 
