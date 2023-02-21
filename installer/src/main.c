@@ -193,9 +193,7 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	ui_puts(1, 3, COLOR_BLACK, msg_installing_eeprom_data);
 	ui_puts(0, 5, COLOR_RED, msg_do_not_turn_off);
 
-#ifndef TARGET_WWITCH
 	cpu_irq_disable();
-#endif
 
 	// Disable the custom splash, if enabled.
 	uint16_t word_0x82 = ws_eeprom_read_word(ieep_handle, 0x82);
@@ -247,9 +245,7 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 				ui_clear_lines(15, 15);
 
 				ui_printf(1, 15, COLOR_RED, msg_verify_error, i);
-#ifndef TARGET_WWITCH
 				cpu_irq_enable();
-#endif
 				wait_for_keypress();
 
 				goto EndInstall;
@@ -268,9 +264,7 @@ static void install_bootfriend(const uint8_t __far* data, uint16_t data_size) {
 	
 
 EndInstall:
-#ifndef TARGET_WWITCH
 	cpu_irq_enable();
-#endif
 	ui_clear_lines(3, 16);
 
 	boot_header_mark_changed();
@@ -423,7 +417,7 @@ void xmodem_backup(void) {
 
 	ui_clear_lines(3, 17);
 	for (uint16_t ip = 0; ip < 2048; ip += 2) {
-		*((uint16_t*) (xm_buffer + ip)) = ws_eeprom_read_word(ieep_handle, ip);
+		*((uint16_t __far*) (xm_buffer + ip)) = ws_eeprom_read_word(ieep_handle, ip);
 	}
 	xmodem_status(msg_xmodem_init);
 	xmodem_open(SERIAL_BAUD_38400);
