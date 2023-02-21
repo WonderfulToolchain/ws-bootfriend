@@ -203,8 +203,12 @@
 				class="pure-button pure-button-primary" style="width: 480px;">Download bootfriend-inst.wsc (Cartridge)</button>
 	</div>
 	<div class="pure-u-1-1" style="margin-bottom: 0.125em; text-align: center;">
+		<button onclick="bf_download('bootfriend-inst.fx', bf_generate_image('wwfx')); return false;"
+				class="pure-button" style="width: 480px;">Download bootfriend-inst.fx (WonderWitch program)</button>
+	</div>
+	<div class="pure-u-1-1" style="margin-bottom: 0.125em; text-align: center;">
 		<button onclick="bf_download('bootfriend-inst-wwsystem.bin', bf_generate_image('wwsoft')); return false;"
-				class="pure-button" style="width: 480px;">Download bootfriend-inst-wwsystem.bin (WonderWitch)</button>
+				class="pure-button" style="width: 480px;">Download bootfriend-inst-wwsystem.bin (WonderWitch OS upgrade)</button>
 	</div>
 	<div class="pure-u-1-1" style="margin-bottom: 1.75em; text-align: center;">
 		<button onclick="bf_download('bootfriend.bin', bf_generate_image('raw')); return false;"
@@ -250,7 +254,11 @@
 			<li>Launch the cartridge. Examine the information on the status bar (top row).
 			<ul>
 				<li>If the status bar says <b>EEP locked</b>, BootFriend cannot be installed. Make sure you've flashed the installer correctly.</li>
-				<li>The <b>Test BootFriend</b> option allows you to test the program serial port loader without installing the splash screen. This is useful for ensuring that your serial port adapter will work with the firmware.</li>
+				<li>The <b>Test BootFriend</b> option allows you to test the program serial port loader without installing the splash screen. This is useful for ensuring that your serial port adapter will work with the firmware.
+				<ul>
+					<li><b>This does not display the configured custom splash!</b> This is <b>only</b> for testing the serial port loader.</li>
+				</ul>
+				</li>
 				<li>The <b>Disable/Enable custom splash</b> option allows you to disable a custom splash (to fix console freezes/hangs related to them) or enable one.
 				<ul>
 					<li>Note that, on SwanCrystal, there is a factory-installed custom splash screen on the IEEPROM, which is slightly different from the built-in one. The built-in splash screen is identical to the WonderSwan Color.</li>
@@ -266,11 +274,23 @@
 			</li>
 			<li>Once done, turn off the console. You can hold <b>Y3</b> on boot to check for a successful BootFriend installation.
 			<ul>
-				<li>Note that <b>bootfriend-inst.wsc</b> disables custom splashes! You'll need to flash different data, or use a different cartridge, to verify BootFriend's operation.</li>
+				<li>Note that the <b>bootfriend-inst.wsc</b> cartridge disables custom splashes on boot! You'll need to flash different data, or use a different cartridge, to verify BootFriend's operation.</li>
+				<li>The WonderSwan Color and SwanCrystal will not turn on if no valid cartridge is present. This is a normal feature of the console.</li>
 			</ul>
 			</li>
 		</ol>
-		<p><b>Installation Guide (WonderWitch):</b></p>
+		<p><b>Installation Guide (WonderWitch .fx program):</b></p>
+		<p>(This method is experimental. If you run into problems, please use the &quot;OS Upgrade&quot; method.)</li>
+		<ol>
+			<li>Transfer <b>bootfriend-inst.fx</b> to WonderWitch.</li>
+			<li>Follow instruction steps 2-4 from the &quot;Cartridge&quot; installation guide.
+			<ul>
+				<li><b>Using the WonderWitch method, the original IEEPROM contents are not saved to SRAM!</b> Please use the XMODEM backup method instead.</li>
+				<li>Using the WonderWitch method, it is not always possible to &quot;unbrick&quot; a WonderSwan with damaged IEEPROM contents. This is a limitation of the method and cannot be fixed. (Note that the &quot;SwanCrystal TFT recovery&quot; function should work correctly.)</li>
+			</ul>
+			</li>
+		</ol>
+		<p><b>Installation Guide (WonderWitch OS Upgrade):</b></p>
 		<ol>
 			<li>The WonderWitch installer is currently only provided as an &quot;OS Upgrade&quot;. Therefore, the installation process is a little different from a typical WonderWitch program:
 			<ul>
@@ -293,10 +313,14 @@
 			</li>
 			<li>Launch <b>Freya Monitor</b> again, and use <b>Recv System</b> with a copy of FreyaOS to restore the original operating system.</li>
 		</ol>
-		<p>A &quot;.fx&quot; version of the installer may be provided in the future.</p>
 	</div>
 	<div class="pure-u-1-1">
 		<h2>Changelog</h2>
+		<p><b>BootFriend v02 (installer v04) (2023-02-21)</b></p>
+		<ul>
+			<li>[BootFriend] Fix name color display regression.</li>
+			<li>[Installer] Added support for installation via FreyaOS-compatible WonderWitch program (.fx).</li>
+		</ul>
 		<p><b>BootFriend v01 (installer v03) (2023-02-18)</b></p>
 		<ul>
 			<li>[BootFriend] Minor bugfixes and size optimizations.</li>
@@ -349,7 +373,7 @@
 		</ul>
 		<p></p>
 		<ul>
-			<li><a href="ws-backup-tool-v0.1.1.bfb">Download .bfb (v0.1.1, 2023-02-18)</a></li>
+			<li><a href="ws-backup-tool-v0.1.4.bfb">Download .bfb (v0.1.4, 2023-02-21)</a></li>
 			<li><a href="https://github.com/asiekierka/ws-backup-tool">Source code</a></li>
 		</ul>
 		<h3 id="soft-wsmonitor">WSMonitor</h3>

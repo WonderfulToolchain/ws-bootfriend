@@ -1,0 +1,52 @@
+ifndef WONDERFUL_TOOLCHAIN
+$(error Please define WONDERFUL_TOOLCHAIN to point to the location of the Wonderful toolchain.)
+endif
+
+include $(WONDERFUL_TOOLCHAIN)/i8086/wwitch.mk
+
+OBJDIR := obj_wwitch
+MKDIRS := $(OBJDIR)
+LIBS := -lww -lws -lc -lgcc
+CFLAGS += -Os -DTARGET_WWITCH -ffunction-sections
+LDFLAGS += --gc-sections --print-gc-sections
+TARGET := bootfriend_inst.fx
+TARGET_NAME := bootfriend_inst
+TARGET_INFO := BootFriend Inst
+
+WF_CRT0 := $(WF_CRT0_JPN1)
+
+SRCDIRS := res src
+CSOURCES := $(foreach dir,$(SRCDIRS),$(notdir $(wildcard $(dir)/*.c)))
+ASMSOURCES := $(foreach dir,$(SRCDIRS),$(notdir $(wildcard $(dir)/*.S)))
+OBJECTS := $(CSOURCES:%.c=$(OBJDIR)/%.o) $(ASMSOURCES:%.S=$(OBJDIR)/%.o)
+
+CFLAGS += -Ires -Isrc
+
+DEPS := $(OBJECTS:.o=.d)
+CFLAGS += -MMD -MP
+
+vpath %.c $(SRCDIRS)
+vpath %.S $(SRCDIRS)
+
+.PHONY: all clean install
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(LD) -o $@.elf -T$(WF_LDSCRIPT) $(LDFLAGS) $(WF_CRT0) $(OBJECTS) $(LIBS)
+	$(MKFENT) -o $@ --name "$(TARGET_NAME)" --info "$(TARGET_INFO)" $@.elf
+
+$(OBJDIR)/%.o: %.c | $(OBJDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(OBJDIR)/%.o: %.S | $(OBJDIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(OBJDIR):
+	$(info $(shell mkdir -p $(MKDIRS)))
+
+clean:
+	rm -r $(OBJDIR)/*
+	rm $(TARGET)
+
+-include $(DEPS)

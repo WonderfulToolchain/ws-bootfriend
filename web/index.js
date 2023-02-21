@@ -678,15 +678,17 @@ function bf_generate_splashdata() {
     }
 }
 
-function bf_generate_rom() {
-	var rom_index = bf_typedArray_indexOf(bin_bootfriend_inst_rom, "bFtMp");
-	var title_index = bf_typedArray_indexOf(bin_bootfriend_inst_rom, "bootfriend-inst devel. bui");
+function bf_generate_rom(bin, bin_size) {
+    if (bin_size < 0) bin_size = bin.length;
+
+	var rom_index = bf_typedArray_indexOf(bin, "bFtMp");
+	var title_index = bf_typedArray_indexOf(bin, "bootfriend-inst devel. bui");
 
     var splashdata = bf_generate_splashdata();
     if (splashdata == null) return;
 
-	var rom = new Uint8Array(131072);
-	rom.set(bin_bootfriend_inst_rom);
+	var rom = new Uint8Array(bin_size);
+	rom.set(bin);
     rom.set(splashdata, rom_index);
 	rom.set(Uint8Array.from(bf_pad_string(bf_generate_title(rom[title_index + 26], rom[title_index + 27]), 28), c => c.charCodeAt(0)), title_index);
 
@@ -714,7 +716,9 @@ function bf_wwcode(data, decode) {
 
 function bf_generate_image(type) {
 	if (type == "rom") {
-		return bf_generate_rom();
+		return bf_generate_rom(bin_bootfriend_inst_rom, 131072);
+	} else if (type == "wwfx") {
+		return bf_generate_rom(bin_bootfriend_inst_fx, -1);
 	} else if (type == "wwsoft") {
 		return bf_wwcode(bf_generate_rom().subarray(0, 64168), false);
 	} else if (type == "raw") {
