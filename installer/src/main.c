@@ -67,10 +67,6 @@ bool is_ww_mode(void) {
 	return false;
 }
 
-bool wait_for_keypress(void) {
-	input_wait_clear(); while (input_pressed == 0) { wait_for_vblank(); input_update(); } input_wait_clear();
-}
-
 void boot_header_mark_changed(void) {
 	boot_header_update_required = true;
 }

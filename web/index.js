@@ -720,7 +720,7 @@ function bf_generate_image(type) {
 	} else if (type == "wwfx") {
 		return bf_generate_rom(bin_bootfriend_inst_fx, -1);
 	} else if (type == "wwsoft") {
-		return bf_wwcode(bf_generate_rom().subarray(0, 64168), false);
+		return bf_wwcode(bf_generate_rom(bin_bootfriend_inst_rom, 131072).subarray(0, 64168), false);
 	} else if (type == "raw") {
 		return bf_generate_splashdata();
 	}

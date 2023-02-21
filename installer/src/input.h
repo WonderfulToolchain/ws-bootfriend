@@ -37,3 +37,4 @@ void vblank_input_update(void);
 void input_reset(void);
 void input_update(void);
 void input_wait_clear(void);
+bool wait_for_keypress(void);

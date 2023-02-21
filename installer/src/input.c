@@ -112,3 +112,7 @@ void input_wait_clear(void) {
 	input_update();
 }
 #endif
+
+bool wait_for_keypress(void) {
+	input_wait_clear(); while (input_pressed == 0) { wait_for_vblank(); input_update(); } input_wait_clear();
+}

@@ -113,15 +113,24 @@ void ui_init(void) {
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(0x20, 0x5270);
     outportb(IO_SCR_BASE, SCR1_BASE(0x1800));
+#endif
     ui_clear_lines(0, 17);
+#ifndef TARGET_WWITCH
     outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
+#endif
 
     if (!ws_system_is_color()) {
         // Halt on mono WS units
         ui_puts(0, ((18-4)/2)-1, 0, msg_wsc_only);
+#ifndef TARGET_WWITCH
         while(1) cpu_halt();
+#else
+	wait_for_keypress();
+	bios_exit();
+#endif
     }
 
+#ifndef TARGET_WWITCH
     ws_mode_set(WS_MODE_COLOR);
 #else
     wwc_set_color_mode(COLOR_MODE_4COLOR);
