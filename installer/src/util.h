@@ -17,10 +17,10 @@
 
 #pragma once
 
-#ifdef __IA16_CMODEL_IS_FAR_TEXT
-#define IN_ROM __far
-#else
+#ifdef __IA16_CMODEL_TINY__
 #define IN_ROM
+#else
+#define IN_ROM __far
 #endif
 
 #include <stdbool.h>
