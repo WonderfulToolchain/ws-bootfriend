@@ -21,8 +21,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <wonderful.h>
 
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #define SCREEN1 ((uint16_t __far*) MK_FP(0x0000, 0x1800))
 #else
 #define SCREEN1 ((uint16_t*) 0x1800)

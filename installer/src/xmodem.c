@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <wonderful.h>
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #include <sys/bios.h>
 #else
 #include <ws.h>
@@ -47,7 +47,7 @@ bool xmodem_poll_exit(void) {
 }
 
 void xmodem_open(uint8_t baudrate) {
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 	comm_set_baudrate(baudrate ? COMM_SPEED_38400 : COMM_SPEED_9600);
 	comm_open();
 #else
@@ -57,7 +57,7 @@ void xmodem_open(uint8_t baudrate) {
 }
 
 void xmodem_close(void) {
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 	comm_close();
 #else
         while (!ws_serial_is_writable()) { }
@@ -65,7 +65,7 @@ void xmodem_close(void) {
 #endif
 }
 
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #define ws_serial_getc comm_receive_char
 #define ws_serial_putc comm_send_char
 #endif
@@ -159,19 +159,19 @@ void xmodem_recv_ack(void) {
 uint8_t xmodem_send_start(void) {
 	xmodem_idx = 1;
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 	cpu_irq_disable();
         ws_hwint_enable(HWINT_SERIAL_RX);
 #endif
 
 	while (!xmodem_poll_exit()) {
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 		int16_t r = comm_receive_char();
 #else
 		int16_t r = ws_serial_getc_nonblock();
 #endif
 		if (r >= 0) {
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 		        ws_hwint_disable(HWINT_SERIAL_RX);
 #endif
 			if (r == CAN) {
@@ -180,7 +180,7 @@ uint8_t xmodem_send_start(void) {
 				return XMODEM_OK;
 			}
 		}
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 		__asm volatile ("sti\nhlt\ncli");
 #endif
 	}

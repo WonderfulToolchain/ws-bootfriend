@@ -15,10 +15,11 @@
  * with BootFriend. If not, see <https://www.gnu.org/licenses/>. 
  */
 
+#include <wonderful.h>
 #include "input.h"
 #include "util.h"
 
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #include <sys/bios.h>
 
 uint16_t input_pressed;
@@ -113,6 +114,6 @@ void input_wait_clear(void) {
 }
 #endif
 
-bool wait_for_keypress(void) {
+void wait_for_keypress(void) {
 	input_wait_clear(); while (input_pressed == 0) { wait_for_vblank(); input_update(); } input_wait_clear();
 }

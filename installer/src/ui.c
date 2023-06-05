@@ -16,8 +16,10 @@
  */
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <string.h>
-#ifdef TARGET_WWITCH
+#include <wonderful.h>
+#ifdef __WONDERFUL_WWITCH__
 #include <sys/bios.h>
 #include <sys/libwwc.h>
 #endif
@@ -25,11 +27,10 @@
 #include "input.h"
 #include "ui.h"
 #include "font_default.h"
-#include "nanoprintf.h"
 #include "util.h"
 #include "ws/display.h"
 
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #define WWITCH_USE_BUILTIN_FONT
 #endif
 
@@ -43,10 +44,16 @@ static bool ui_is_divider(char c) {
     return ui_is_space(c) || c == '-';
 }
 
+__attribute__((noinline))
 void ui_clear_lines(uint8_t y_from, uint8_t y_to) {
+#ifdef __WONDERFUL_WWITCH__
+    uint8_t height = y_to - y_from + 1;
+    screen_fill_char(0, 0, y_from, 28, height, 0);
+#else
     for (uint8_t i = y_from; i <= y_to; i++) {
         memset(SCREEN1 + (i << 5), 0, 28 * 2);
     }
+#endif
 }
 
 void ui_puts(uint8_t x, uint8_t y, uint8_t color, const char __far* buf) {
@@ -77,13 +84,13 @@ void ui_printf(uint8_t x, uint8_t y, uint8_t color, const char __far* format, ..
     char buf[128];
     va_list val;
     va_start(val, format);
-    npf_vsnprintf(buf, sizeof(buf), format, val);
+    vsnprintf(buf, sizeof(buf), format, val);
     va_end(val);
 
     ui_puts(x, y, color, buf);
 }
 
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #define ui_palette_set_color wwc_palette_set_color
 #else
 static inline void ui_palette_set_color(uint8_t idx, uint8_t sub_idx, uint16_t color) {
@@ -94,12 +101,10 @@ static inline void ui_palette_set_color(uint8_t idx, uint8_t sub_idx, uint16_t c
 void ui_init(void) {
 #ifdef WWITCH_USE_BUILTIN_FONT
     uint8_t buffer[8];
-    uint16_t __far* dst = (uint16_t __far*) MK_FP(0x0000, 0x2000);
+    font_set_color(0x01);
     for (int i = 0; i < 128; i++) {
         text_get_fontdata(i, buffer);
-        for (int j = 0; j < 8; j++) {
-            *(dst++) = buffer[j];
-        }
+        font_set_monodata(i, 1, buffer);
     }
 #else
     const uint8_t __far* src = _font_default_bin;
@@ -109,20 +114,22 @@ void ui_init(void) {
     }
 #endif
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
     ws_display_set_shade_lut(SHADE_LUT_DEFAULT);
     outportw(0x20, 0x5270);
     outportb(IO_SCR_BASE, SCR1_BASE(0x1800));
 #endif
     ui_clear_lines(0, 17);
-#ifndef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
+    // display_control(DCM_SCR1);
+#else
     outportw(IO_DISPLAY_CTRL, DISPLAY_SCR1_ENABLE);
 #endif
 
     if (!ws_system_is_color()) {
         // Halt on mono WS units
         ui_puts(0, ((18-4)/2)-1, 0, msg_wsc_only);
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
         while(1) cpu_halt();
 #else
 	wait_for_keypress();
@@ -130,7 +137,7 @@ void ui_init(void) {
 #endif
     }
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
     ws_mode_set(WS_MODE_COLOR);
 #else
     wwc_set_color_mode(COLOR_MODE_4COLOR);
@@ -152,9 +159,13 @@ void ui_init(void) {
 static void ui_menu_draw_entry(menu_entry_t __far* entry, uint8_t y, bool selected) {
     uint8_t color = selected ? COLOR_SELECTED : (entry->flags & MENU_ENTRY_DISABLED ? COLOR_GRAY : COLOR_BLACK);
     uint16_t prefix = SCR_ENTRY_PALETTE(color);
+#ifdef __WONDERFUL_WWITCH__
+    screen_fill_char(0, 0, y, 28, 1, prefix);
+#else
     for (uint8_t i = 0; i < 28; i++) {
-        SCREEN1[(y << 5) + i] = SCR_ENTRY_PALETTE(color);
+        SCREEN1[(y << 5) + i] = prefix;
     }
+#endif
     ui_puts((28 - strlen(entry->text)) >> 1, y, color, entry->text);
 }
 

@@ -16,8 +16,10 @@
  */
 
 #include <stdbool.h>
+#include <stdio.h>
+#include <wonderful.h>
 #include <ws.h>
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 #include <sys/bios.h>
 #endif
 
@@ -25,20 +27,13 @@
 #include "boot_splash.h"
 #include "font_default.h"
 #include "input.h"
-#include "nanoprintf.h"
 #include "ui.h"
 #include "util.h"
 #include "xmodem.h"
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 volatile uint16_t vbl_ticks;
-
-__attribute__((interrupt))
-void vblank_int_handler(void) {
-	vbl_ticks++;
-	vblank_input_update();
-	ws_hwint_ack(HWINT_VBLANK);
-}
+extern void vblank_int_handler(void);
 #endif
 
 // Must be 24 chars
@@ -103,7 +98,7 @@ static void statusbar_update(void) {
 	} else if (splash_valid && splash_bf) {
 		uint8_t bf_version = boot_header_data.bootfriend_version;
 		if (bf_version == 0x60) bf_version = 0x00;
-		npf_snprintf(buf, sizeof(buf), bfi_bf_found, bf_version);
+		snprintf(buf, sizeof(buf), bfi_bf_found, bf_version);
 	} else {
 		buf[0] = '?'; buf[1] = 0;
 	}
@@ -119,9 +114,13 @@ static void toggle_boot_splash(void) {
 	statusbar_update();
 }
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 extern const char __far ws_ieep_internal_owner_to_ascii_map[];
+#ifdef __IA16_CMODEL_IS_FAR_TEXT
 extern void bootfriend_vblank_handler(void) __attribute__((interrupt));
+#else
+extern void bootfriend_vblank_handler(void);
+#endif
 
 static void test_bootfriend(void) {
 	// copy BootFriend to IRAM
@@ -317,7 +316,7 @@ static const char IN_ROM msg_enable_bf[] = "Enable BootFriend";
 static const char IN_ROM msg_recover_swancrystal[] = "SwanCrystal TFT recovery";
 static const char IN_ROM msg_restore_xmodem_backup[] = "Restore IEEPROM (XMODEM)";
 static const char IN_ROM msg_backup_xmodem[] = "Backup IEEPROM (XMODEM)";
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 static const char IN_ROM msg_exit[] = "Exit";
 #else
 static const char IN_ROM msg_restore_sram_backup[] = "Restore IEEPROM (SRAM)";
@@ -338,7 +337,7 @@ uint8_t menu_show_main(void) {
 	uint8_t entry_count = 0;
 
 	entries[entry_count].text = msg_test_bootfriend;
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 	entries[entry_count++].flags = MENU_ENTRY_DISABLED;
 #else
 	entries[entry_count++].flags = provided_splash_bf ? 0 : MENU_ENTRY_DISABLED;
@@ -355,7 +354,7 @@ uint8_t menu_show_main(void) {
 	entries[entry_count++].flags = 0;
 	entries[entry_count].text = msg_restore_xmodem_backup;
 	entries[entry_count++].flags = 0;
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 	entries[entry_count].text = msg_exit;
 	entries[entry_count++].flags = 0;
 #else
@@ -373,7 +372,7 @@ static const char IN_ROM msg_xmodem_backup_check[] = "Would you like to backup y
 void xmodem_backup(void);
 
 void do_backup_check(void) {
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
 	ws_boot_splash_header_t __far* provided_header = (ws_boot_splash_header_t __far*) MK_FP(0x1000, 0x0080);
 
@@ -419,7 +418,7 @@ void xmodem_backup(void) {
 	xmodem_open(SERIAL_BAUD_38400);
 
         if (xmodem_send_start() == XMODEM_OK) {
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
                 cpu_irq_disable();
 #endif
                 xmodem_status(msg_xmodem_progress);
@@ -430,7 +429,7 @@ void xmodem_backup(void) {
                                break;
                         case XMODEM_ERROR:
                                xmodem_status(msg_xmodem_transfer_error);
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
                                ws_hwint_ack(0xFF);
                                cpu_irq_enable();
 #endif
@@ -443,7 +442,7 @@ void xmodem_backup(void) {
                 xmodem_send_finish();
         }
 End:
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
         ws_hwint_ack(0xFF);
         cpu_irq_enable();
 #endif
@@ -452,14 +451,13 @@ End:
 }
 
 void xmodem_restore(void) {
-	ws_eeprom_handle_t ieep_handle = ws_eeprom_handle_internal();
 	uint8_t xm_buffer[2048];
 	uint16_t xm_position = 0;
 
 	ui_clear_lines(3, 17);
 	xmodem_open(SERIAL_BAUD_38400);
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
         cpu_irq_disable();
 #endif
         xmodem_status(msg_xmodem_progress);
@@ -477,7 +475,7 @@ void xmodem_restore(void) {
                         case XMODEM_ERROR:
                                xm_position = 0;
                                xmodem_status(msg_xmodem_transfer_error);
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
                                ws_hwint_ack(0xFF);
                                cpu_irq_enable();
 #endif
@@ -486,7 +484,7 @@ void xmodem_restore(void) {
 				return;
                         case XMODEM_SELF_CANCEL:
                         case XMODEM_CANCEL:
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
                                ws_hwint_ack(0xFF);
                                cpu_irq_enable();
 #endif
@@ -497,7 +495,7 @@ void xmodem_restore(void) {
         }
 
 End:
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
         ws_hwint_ack(0xFF);
         cpu_irq_enable();
 #endif
@@ -529,7 +527,7 @@ End:
 void menu_main(void) {
 	input_wait_clear();
 	switch (menu_show_main()) {
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 	case 0: // Test BootFriend
 		test_bootfriend();
 		break;
@@ -554,7 +552,7 @@ void menu_main(void) {
 			xmodem_restore();
 		}
 		break;
-#ifdef TARGET_WWITCH
+#ifdef __WONDERFUL_WWITCH__
 	case 7: // Exit
 		bios_exit();
 		break;
@@ -569,7 +567,7 @@ void menu_main(void) {
 }
 
 int main(void) {
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 	cpu_irq_disable();
 #endif
 
@@ -577,7 +575,7 @@ int main(void) {
 	ui_init();
 	statusbar_update();
 
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
 	outportb(IO_HWINT_ACK, 0xFF);
 	ws_hwint_set_handler(HWINT_IDX_VBLANK, vblank_int_handler);
 	ws_hwint_enable(HWINT_VBLANK);

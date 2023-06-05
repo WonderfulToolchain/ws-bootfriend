@@ -15,7 +15,8 @@
  * with BootFriend. If not, see <https://www.gnu.org/licenses/>. 
  */
 
-#ifdef TARGET_WWITCH
+#include <wonderful.h>
+#ifdef __WONDERFUL_WWITCH__
 #include <sys/bios.h>
 #else
 #include <ws.h>
@@ -26,7 +27,7 @@
 extern volatile uint8_t vbl_ticks;
 
 void wait_for_vblank(void) {
-#ifndef TARGET_WWITCH
+#ifndef __WONDERFUL_WWITCH__
         uint8_t vbl_ticks_last = vbl_ticks;
 
         while (vbl_ticks == vbl_ticks_last) {

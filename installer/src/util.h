@@ -17,10 +17,10 @@
 
 #pragma once
 
-#ifdef TARGET_WWITCH
-#define IN_ROM
-#else
+#ifdef __IA16_CMODEL_IS_FAR_TEXT
 #define IN_ROM __far
+#else
+#define IN_ROM
 #endif
 
 #include <stdbool.h>
