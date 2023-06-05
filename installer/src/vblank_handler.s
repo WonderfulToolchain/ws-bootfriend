@@ -28,9 +28,11 @@ vblank_int_handler:
 	push ss
 	push ds
 	push es
+	push ss
+	pop ds
 
 	inc word ptr [vbl_ticks]
-	call vblank_input_update
+	ASM_PLATFORM_CALL vblank_input_update
 
 	// Acknowledge interrupt
 	mov al, 0x40

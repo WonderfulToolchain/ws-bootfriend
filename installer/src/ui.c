@@ -44,15 +44,15 @@ static bool ui_is_divider(char c) {
     return ui_is_space(c) || c == '-';
 }
 
-__attribute__((noinline))
-void ui_clear_lines(uint8_t y_from, uint8_t y_to) {
 #ifdef __WONDERFUL_WWITCH__
+__attribute__((noinline))
+#endif
+void ui_clear_lines(uint8_t y_from, uint8_t y_to) {
     uint8_t height = y_to - y_from + 1;
+#ifdef __WONDERFUL_WWITCH__
     screen_fill_char(0, 0, y_from, 28, height, 0);
 #else
-    for (uint8_t i = y_from; i <= y_to; i++) {
-        memset(SCREEN1 + (i << 5), 0, 28 * 2);
-    }
+    ws_screen_fill_tiles(SCREEN1, 0, 0, y_from, 28, height);
 #endif
 }
 
@@ -162,9 +162,7 @@ static void ui_menu_draw_entry(menu_entry_t __far* entry, uint8_t y, bool select
 #ifdef __WONDERFUL_WWITCH__
     screen_fill_char(0, 0, y, 28, 1, prefix);
 #else
-    for (uint8_t i = 0; i < 28; i++) {
-        SCREEN1[(y << 5) + i] = prefix;
-    }
+    ws_screen_fill_tiles(SCREEN1, prefix, 0, y, 28, 1);
 #endif
     ui_puts((28 - strlen(entry->text)) >> 1, y, color, entry->text);
 }
