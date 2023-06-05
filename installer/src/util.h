@@ -17,7 +17,7 @@
 
 #pragma once
 
-#ifdef __IA16_CMODEL_TINY__
+#if defined(__IA16_CMODEL_TINY__) || defined(__WONDERFUL_WWITCH__)
 #define IN_ROM
 #else
 #define IN_ROM __far
