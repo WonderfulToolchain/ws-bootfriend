@@ -47,7 +47,7 @@ bits 16
 cpu 186
 org 0x0000
 
-	db 'b', 'F', 't' Padding
+	db 'b', 'F', 't' ; Padding
 	db 'M' ; Console flags
 	db 'p' ; Console name color
 	db 0 ; Padding (must be 0)
