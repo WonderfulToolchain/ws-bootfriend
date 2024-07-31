@@ -16,7 +16,8 @@ NAME		:= bootfriend_inst
 
 INCLUDEDIRS	:= res src
 SOURCEDIRS	:= res src
-CBINDIRS	:=
+ASSETDIRS	:= assets
+CBINDIRS	:= cbin
 
 # Defines passed to all files
 # ---------------------------
@@ -27,14 +28,14 @@ DEFINES		:=
 # ---------
 
 LIBS		:= -lwsx -lws
-LIBDIRS		:= $(WF_TARGET_DIR)
+LIBDIRS		:= $(WF_ARCH_LIBDIRS)
 
 # Build artifacts
 # ---------------
 
 BUILDDIR	:= build/bootfriend
 ELF		:= build/bootfriend/$(NAME).elf
-MAP		:= build/bootfriend/$(NAME).map
+ELF_STAGE1	:= build/bootfriend/$(NAME)_stage1.elf
 EXECUTABLE	:= $(NAME).bfb
 
 # Verbose flag
@@ -49,6 +50,10 @@ endif
 # Source files
 # ------------
 
+ifneq ($(ASSETDIRS),)
+    SOURCES_WFPROCESS	:= $(shell find -L $(ASSETDIRS) -name "*.lua")
+    INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(ASSETDIRS))
+endif
 ifneq ($(CBINDIRS),)
     SOURCES_CBIN	:= $(shell find -L $(CBINDIRS) -name "*.bin")
     INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(CBINDIRS))
@@ -62,26 +67,24 @@ SOURCES_C	:= $(shell find -L $(SOURCEDIRS) -name "*.c")
 WARNFLAGS	:= -Wall
 
 INCLUDEFLAGS	:= $(foreach path,$(INCLUDEDIRS),-I$(path)) \
-		   $(foreach path,$(LIBDIRS),-I$(path)/include)
+		   $(foreach path,$(LIBDIRS),-isystem $(path)/include)
 
 LIBDIRSFLAGS	:= $(foreach path,$(LIBDIRS),-L$(path)/lib)
 
-ASFLAGS		+= -x assembler-with-cpp $(DEFINES) $(WF_ARCH_CFLAGS) \
-		   $(INCLUDEFLAGS) -ffunction-sections
+ASFLAGS		:= -x assembler-with-cpp $(DEFINES) $(WF_ARCH_CFLAGS) \
+		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -fno-common
 
-CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
-		   $(INCLUDEFLAGS) -ffunction-sections -Os
+CFLAGS		:= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
+		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -fno-common -Os -g
 
-LDFLAGS		:= -T$(WF_LDSCRIPT) \
-		   $(LIBDIRSFLAGS) -Wl,-Map,$(MAP) -Wl,--gc-sections \
+LDFLAGS		:= -T$(WF_LDSCRIPT) $(LIBDIRSFLAGS) -Wl,--gc-sections -fno-common \
 		   $(WF_ARCH_LDFLAGS) $(LIBS)
 
 # Intermediate build files
 # ------------------------
 
-OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN)))
-
-HEADERS_ASSETS	:= $(patsubst %.bin,%_bin.h,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN)))
+OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN))) \
+		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_WFPROCESS)))
 
 OBJS_SOURCES	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_S))) \
 		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_C)))
@@ -95,38 +98,48 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(EXECUTABLE)
+all: $(EXECUTABLE) compile_commands.json
 
-$(EXECUTABLE): $(ELF)
-	@echo "  OBJCOPY $@"
-	$(_V)$(OBJCOPY) -O binary $< $@
+$(EXECUTABLE): $(ELF_STAGE1)
+	@echo "  BFB     $@"
+	$(_V)$(BUILDBFB) -o $(EXECUTABLE) --output-elf $(ELF) $(BUILDGATEFLAGS) $<
 
-$(ELF): $(OBJS)
+$(ELF_STAGE1): $(OBJS)
 	@echo "  LD      $@"
-	$(_V)$(CC) -o $@ $(OBJS) $(WF_CRT0) $(LDFLAGS)
+	$(_V)$(CC) -r -o $@ $(OBJS) $(WF_CRT0) $(LDFLAGS)
 
 clean:
 	@echo "  CLEAN"
-	$(_V)$(RM) $(EXECUTABLE) $(BUILDDIR)
+	$(_V)$(RM) $(EXECUTABLE) $(BUILDDIR) compile_commands.json
+
+compile_commands.json: $(OBJS)
+	@echo "  MERGE   compile_commands.json"
+	$(_V)$(WF)/bin/wf-compile-commands-merge $@ $(patsubst %.o,%.cc.json,$^)
 
 # Rules
 # -----
 
-$(BUILDDIR)/%.s.o : %.s
+$(BUILDDIR)/%.s.o : %.s | $(OBJS_ASSETS)
 	@echo "  AS      $<"
 	@$(MKDIR) -p $(@D)
-	$(_V)$(CC) $(ASFLAGS) -MMD -MP -c -o $@ $<
+	$(_V)$(CC) $(ASFLAGS) -MMD -MP -MJ $(patsubst %.o,%.cc.json,$@) -c -o $@ $<
 
-$(BUILDDIR)/%.c.o : %.c
+$(BUILDDIR)/%.c.o : %.c | $(OBJS_ASSETS)
 	@echo "  CC      $<"
 	@$(MKDIR) -p $(@D)
-	$(_V)$(CC) $(CFLAGS) -MMD -MP -c -o $@ $<
+	$(_V)$(CC) $(CFLAGS) -MMD -MP -MJ $(patsubst %.o,%.cc.json,$@) -c -o $@ $<
 
 $(BUILDDIR)/%.bin.o $(BUILDDIR)/%_bin.h : %.bin
 	@echo "  BIN2C   $<"
 	@$(MKDIR) -p $(@D)
 	$(_V)$(WF)/bin/wf-bin2c -a 2 --address-space __far $(@D) $<
 	$(_V)$(CC) $(CFLAGS) -MMD -MP -c -o $(BUILDDIR)/$*.bin.o $(BUILDDIR)/$*_bin.c
+
+$(BUILDDIR)/%.lua.o : %.lua
+	@echo "  PROCESS $<"
+	@$(MKDIR) -p $(@D)
+	$(_V)$(WF)/bin/wf-process -o $(BUILDDIR)/$*.s -t $(TARGET) --depfile $(BUILDDIR)/$*.lua.d --depfile-target $(BUILDDIR)/$*.lua.o $<
+	$(_V)$(CC) $(ASFLAGS) -c -o $(BUILDDIR)/$*.lua.o $(BUILDDIR)/$*.s
 
 # Include dependency files if they exist
 # --------------------------------------

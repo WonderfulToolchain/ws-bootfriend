@@ -17,13 +17,10 @@
 
 #pragma once
 
-#if defined(__IA16_CMODEL_TINY__) || defined(__WONDERFUL_WWITCH__)
-#define IN_ROM
-#else
-#define IN_ROM __far
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
+#include <wonderful.h>
+
+#define IN_ROM __wf_rom
 
 void wait_for_vblank(void);

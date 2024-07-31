@@ -16,7 +16,8 @@ NAME		:= bootfriend_inst
 
 INCLUDEDIRS	:= res src
 SOURCEDIRS	:= res src
-CBINDIRS	:=
+ASSETDIRS	:= assets
+CBINDIRS	:= cbin
 
 # Defines passed to all files
 # ---------------------------
@@ -27,14 +28,14 @@ DEFINES		:=
 # ---------
 
 LIBS		:= -lwsx -lws
-LIBDIRS		:= $(WF_TARGET_DIR)
+LIBDIRS		:= $(WF_ARCH_LIBDIRS)
 
 # Build artifacts
 # ---------------
 
 BUILDDIR	:= build/rom
 ELF		:= build/rom/$(NAME).elf
-MAP		:= build/rom/$(NAME).map
+ELF_STAGE1	:= build/rom/$(NAME)_stage1.elf
 ROM		:= $(NAME).wsc
 
 # Verbose flag
@@ -49,6 +50,10 @@ endif
 # Source files
 # ------------
 
+ifneq ($(ASSETDIRS),)
+    SOURCES_WFPROCESS	:= $(shell find -L $(ASSETDIRS) -name "*.lua")
+    INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(ASSETDIRS))
+endif
 ifneq ($(CBINDIRS),)
     SOURCES_CBIN	:= $(shell find -L $(CBINDIRS) -name "*.bin")
     INCLUDEDIRS		+= $(addprefix $(BUILDDIR)/,$(CBINDIRS))
@@ -62,25 +67,26 @@ SOURCES_C	:= $(shell find -L $(SOURCEDIRS) -name "*.c")
 WARNFLAGS	:= -Wall
 
 INCLUDEFLAGS	:= $(foreach path,$(INCLUDEDIRS),-I$(path)) \
-		   $(foreach path,$(LIBDIRS),-I$(path)/include)
+		   $(foreach path,$(LIBDIRS),-isystem $(path)/include)
 
 LIBDIRSFLAGS	:= $(foreach path,$(LIBDIRS),-L$(path)/lib)
 
 ASFLAGS		+= -x assembler-with-cpp $(DEFINES) $(WF_ARCH_CFLAGS) \
-		   $(INCLUDEFLAGS) -ffunction-sections
+		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -fno-common
 
 CFLAGS		+= -std=gnu11 $(WARNFLAGS) $(DEFINES) $(WF_ARCH_CFLAGS) \
-		   $(INCLUDEFLAGS) -ffunction-sections -Os
+		   $(INCLUDEFLAGS) -ffunction-sections -fdata-sections -fno-common -O2
 
-LDFLAGS		:= $(LIBDIRSFLAGS) -Wl,-Map,$(MAP) -Wl,--gc-sections \
+LDFLAGS		:= -T$(WF_LDSCRIPT) $(LIBDIRSFLAGS) \
 		   $(WF_ARCH_LDFLAGS) $(LIBS)
+
+BUILDROMFLAGS	:=
 
 # Intermediate build files
 # ------------------------
 
-OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN)))
-
-HEADERS_ASSETS	:= $(patsubst %.bin,%_bin.h,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN)))
+OBJS_ASSETS	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_CBIN))) \
+		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_WFPROCESS)))
 
 OBJS_SOURCES	:= $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_S))) \
 		   $(addsuffix .o,$(addprefix $(BUILDDIR)/,$(SOURCES_C)))
@@ -94,34 +100,48 @@ DEPS		:= $(OBJS:.o=.d)
 
 .PHONY: all clean
 
-all: $(ROM)
+all: $(ROM) compile_commands.json
 
-$(ROM) $(ELF): $(OBJS)
-	@echo "  ROMLINK $@"
-	$(_V)$(ROMLINK) -v -o $@ --output-elf $(ELF) -- $(OBJS) $(WF_CRT0) $(LDFLAGS)
+$(ROM) $(ELF): $(ELF_STAGE1)
+	@echo "  ROM     $@"
+	$(_V)$(BUILDROM) -o $(ROM) --output-elf $(ELF) $(BUILDROMFLAGS) $<
+
+$(ELF_STAGE1): $(OBJS)
+	@echo "  LD      $@"
+	$(_V)$(CC) -r -o $(ELF_STAGE1) $(OBJS) $(WF_CRT0) $(LDFLAGS)
 
 clean:
 	@echo "  CLEAN"
-	$(_V)$(RM) $(ROM) $(BUILDDIR)
+	$(_V)$(RM) $(ROM) $(BUILDDIR) compile_commands.json
+
+compile_commands.json: $(OBJS)
+	@echo "  MERGE   compile_commands.json"
+	$(_V)$(WF)/bin/wf-compile-commands-merge $@ $(patsubst %.o,%.cc.json,$^)
 
 # Rules
 # -----
 
-$(BUILDDIR)/%.s.o : %.s
+$(BUILDDIR)/%.s.o : %.s | $(OBJS_ASSETS)
 	@echo "  AS      $<"
 	@$(MKDIR) -p $(@D)
-	$(_V)$(CC) $(ASFLAGS) -MMD -MP -c -o $@ $<
+	$(_V)$(CC) $(ASFLAGS) -MMD -MP -MJ $(patsubst %.o,%.cc.json,$@) -c -o $@ $<
 
-$(BUILDDIR)/%.c.o : %.c
+$(BUILDDIR)/%.c.o : %.c | $(OBJS_ASSETS)
 	@echo "  CC      $<"
 	@$(MKDIR) -p $(@D)
-	$(_V)$(CC) $(CFLAGS) -MMD -MP -c -o $@ $<
+	$(_V)$(CC) $(CFLAGS) -MMD -MP -MJ $(patsubst %.o,%.cc.json,$@) -c -o $@ $<
 
 $(BUILDDIR)/%.bin.o $(BUILDDIR)/%_bin.h : %.bin
 	@echo "  BIN2C   $<"
 	@$(MKDIR) -p $(@D)
 	$(_V)$(WF)/bin/wf-bin2c -a 2 --address-space __far $(@D) $<
 	$(_V)$(CC) $(CFLAGS) -MMD -MP -c -o $(BUILDDIR)/$*.bin.o $(BUILDDIR)/$*_bin.c
+
+$(BUILDDIR)/%.lua.o : %.lua
+	@echo "  PROCESS $<"
+	@$(MKDIR) -p $(@D)
+	$(_V)$(WF)/bin/wf-process -o $(BUILDDIR)/$*.s -t $(TARGET) --depfile $(BUILDDIR)/$*.lua.d --depfile-target $(BUILDDIR)/$*.lua.o $<
+	$(_V)$(CC) $(CFLAGS) -c -o $(BUILDDIR)/$*.lua.o $(BUILDDIR)/$*.s
 
 # Include dependency files if they exist
 # --------------------------------------

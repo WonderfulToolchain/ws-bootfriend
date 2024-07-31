@@ -32,13 +32,16 @@
 #include "xmodem.h"
 
 #ifndef __WONDERFUL_WWITCH__
+__attribute__((section(".iramx_1800")))
+uint8_t reserved_space[0x4000 - 0x1800];
+
 volatile uint16_t vbl_ticks;
 extern void vblank_int_handler(void);
 #endif
 
 // Must be 24 chars
 //                                      1234567890123456789012345678
-static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui04";
+static const char IN_ROM bfi_title[] = "bootfriend-inst devel. bui05";
 static const char IN_ROM bfi_eeprom_locked[] = "EEP locked";
 static const char IN_ROM bfi_eeprom_unlocked[] = "EEP unlocked";
 static const char IN_ROM bfi_no_splash[] = "no splash";

@@ -25,7 +25,7 @@
 uint16_t input_pressed;
 
 void input_update(void) {
-	input_pressed = key_hit_check();
+	input_pressed = key_hit_check_with_repeat();
 }
 
 void input_wait_clear(void) {
